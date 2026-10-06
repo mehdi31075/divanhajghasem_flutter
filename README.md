@@ -1,3 +1,5 @@
+<div dir="rtl" align="right">
+
 # دیوان
 
 بک‌اند مستقل کنار اپ در `backend/` به Laravel 13 منتقل شده و پنل فارسی آن بازطراحی شده است. مسیر خواندن اپ قدیمی حفظ شده؛ مدیریت اپ جدید و پنل توکن Bearer دارند. [راهنمای نصب روی هاست](backend/DEPLOYMENT.md). هنوز روی سایت اصلی deploy نشده است.
@@ -6,11 +8,15 @@
 
 ## اجرای وب با API اصلی
 
+<div dir="ltr" align="left">
+
 ```sh
 flutter pub get
 dart run sqflite_common_ffi_web:setup
 flutter build web --debug --no-wasm-dry-run --no-web-resources-cdn
 ```
+
+</div>
 
 برنامه به‌صورت مستقیم از `http://divanhajghasem.ir/api.php`، همان API نسخهٔ Android، استفاده می‌کند. برای اجرای خروجی وب باید آن را روی میزبان وب خودتان قرار دهید؛ اگر سرور API هدر CORS نداشته باشد، مرورگر درخواست مستقیم را مسدود می‌کند و نسخهٔ Android همچنان بدون این محدودیت کار می‌کند. SQLite وب در IndexedDB ذخیره می‌شود؛ پاک‌کردن داده‌های سایت یا استفاده از مرورگر دیگر، نوشته‌های این مرورگر را در دسترس قرار نمی‌دهد.
 
@@ -26,6 +32,8 @@ flutter build web --debug --no-wasm-dry-run --no-web-resources-cdn
 
 Flutter دارای Dart 3.10 یا جدیدتر لازم است؛ محیط بررسی Flutter 3.41.9 است. برای Android، SDK اندروید و گوشی یا شبیه‌ساز لازم است. فایل‌های بومی Android و وب اکنون تولید شده‌اند. از داخل پوشه پروژه اجرا کنید:
 
+<div dir="ltr" align="left">
+
 ```sh
 flutter pub get
 dart format lib test
@@ -33,6 +41,8 @@ flutter analyze
 flutter test
 flutter run
 ```
+
+</div>
 
 نام نمایشی برنامه «دیوان» است؛ شناسه و امضای انتشار پیش از انتشار عمومی نهایی شوند.
 
@@ -57,6 +67,8 @@ SQLite نسخهٔ ۶ پیش‌نویس‌ها، Delta ویرایشگر Quill، �
 
 ## ساختار
 
+<div dir="ltr" align="left">
+
 ```text
 lib/domain/       مدل یادداشت و دسته
 lib/data/         SQLite و تراکنش‌های محلی
@@ -65,6 +77,8 @@ lib/ui/           صفحات فارسی و اجزای مشترک
 test/             آزمون‌های پایداری داده و چیدمان موبایل
 docs/             زمینه پروژه، قرارداد سرور و گزارش بررسی
 ```
+
+</div>
 
 ## وضعیت واقعی
 
@@ -98,9 +112,15 @@ endpoint نوشتن، عنوان فرعی را الزامی می‌داند. ت�
 
 راهنمای نصب سازگار با پنل و دیتابیس قدیمی: [backend/README.md](backend/README.md). پس از نصب فایل‌ها و migration روی هاست و فعال بودن HTTPS:
 
+<div dir="ltr" align="left">
+
 ```sh
 flutter run -d chrome --wasm --no-web-resources-cdn \
   --dart-define=DIVAN_API_URL=https://divanhajghasem.ir/mobile-api.php
 ```
 
+</div>
+
 API جدید CORS دارد و توکن با هدر Bearer ارسال می‌شود؛ Chrome برای این مسیر به خاموش کردن امنیت نیاز ندارد. آدرس پیش‌فرض خواندن هنوز API فعلی است تا انتشار بک‌اند، مطالعهٔ عمومی را قطع نکند. پنل جدید نیز توکن مصرف می‌کند؛ فرم‌های کوکی بازنشسته شده‌اند. API عمومی نسخهٔ اندروید قدیمی بدون توکن حفظ شده است.
+
+</div>
