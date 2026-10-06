@@ -23,6 +23,7 @@ void main() {
         client: MockClient((request) async {
           requests.add(request);
           expect(request.url.path, '/mobile-api.php');
+          expect(request.url.scheme, 'https');
           expect(request.headers.containsKey('cookie'), isFalse);
           final action = request.url.queryParameters['action'];
           if (action == 'login') {

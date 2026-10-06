@@ -50,7 +50,7 @@ class PostApi extends ChangeNotifier {
   }) : tokenEndpoint =
            tokenEndpoint ??
            (const String.fromEnvironment('DIVAN_TOKEN_API_URL').isEmpty
-               ? endpoint.resolve('mobile-api.php')
+               ? endpoint.resolve('mobile-api.php').replace(scheme: 'https')
                : Uri.parse(
                    const String.fromEnvironment('DIVAN_TOKEN_API_URL'),
                  )),
