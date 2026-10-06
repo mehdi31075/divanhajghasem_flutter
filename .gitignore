@@ -1,0 +1,15 @@
+.dart_tool/
+.flutter-plugins-dependencies
+build/
+android/local.properties
+*.iml
+.idea/
+
+# Independent PHP repository in this workspace
+/backend/
+.DS_Store
+*.zip
+*.log
+
+__pycache__/
+*.pyc

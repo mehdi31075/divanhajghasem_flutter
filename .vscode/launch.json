@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "دیوان",
+      "request": "launch",
+      "type": "dart"
+    },
+    {
+      "name": "دیوان (web با CORS توسعه‌ای)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "deviceId": "chrome",
+      "args": [
+        "--wasm",
+        "--web-browser-flag=--disable-web-security",
+        "--no-pub",
+        "--no-web-resources-cdn"
+      ]
+    },
+    {
+      "name": "دیوان (profile)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "دیوان (release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release"
+    }
+  ]
+}

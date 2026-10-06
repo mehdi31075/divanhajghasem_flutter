@@ -1,0 +1,41 @@
+name: hajqasem_app
+description: A simple Persian offline notebook for Haj Qasem.
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+  flutter: '>=3.35.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  http: ^1.6.0
+  flutter_widget_from_html_core: ^0.17.4
+  html: ^0.15.7
+  sqflite_common_ffi_web: ^1.1.1
+  flutter_quill: ^11.5.0
+  flutter_quill_delta_from_html: ^1.5.3
+  vsc_quill_delta_to_html: ^1.0.5
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.3.6
+flutter:
+  uses-material-design: true
+  fonts:
+    # Flutter Web requests Roboto during engine startup unless it is bundled.
+    # Keep this fallback local too; all app text uses Vazirmatn.
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Vazirmatn-Regular.ttf
+    - family: Vazirmatn
+      fonts:
+        - asset: assets/fonts/Vazirmatn-Regular.ttf
+        - asset: assets/fonts/Vazirmatn-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Vazirmatn-Bold.ttf
+          weight: 700

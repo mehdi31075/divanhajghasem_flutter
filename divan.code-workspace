@@ -1,0 +1,6 @@
+{
+  "folders": [
+    { "name": "Flutter", "path": "." },
+    { "name": "PHP backend", "path": "backend" }
+  ]
+}
