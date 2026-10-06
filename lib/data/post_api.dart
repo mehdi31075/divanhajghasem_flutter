@@ -24,11 +24,9 @@ class LoginSessionUnavailable extends PostFailure {
     : super('سرور نشست ورود را برای درخواست بعدی نگه نداشت.');
 }
 
-class PreviewOnlyAccess extends PostFailure {
-  const PreviewOnlyAccess()
-    : super(
-        'ورود آزمایشی فقط ابزارهای مدیریت را باز می‌کند. برای ثبت تغییر روی سایت، ورود واقعی سرور لازم است.',
-      );
+/// A definite rejection from the token API, before any change was committed.
+class PostRejected extends PostFailure {
+  const PostRejected(super.message);
 }
 
 class PostUnconfirmed extends PostFailure {
@@ -38,35 +36,34 @@ class PostUnconfirmed extends PostFailure {
       );
 }
 
-/// Adapts the existing PHP endpoints; no web view or local backend is used.
+/// Token API by default; the existing PHP session adapter remains opt-in.
 class PostApi extends ChangeNotifier {
   PostApi(
     this.endpoint, {
     http.Client? client,
-    this.timeout = const Duration(seconds: 20),
-  }) : client = client ?? sessionClient(endpoint);
+    Uri? tokenEndpoint,
+    this.useTokens = const bool.fromEnvironment(
+      'DIVAN_USE_TOKENS',
+      defaultValue: true,
+    ),
+    this.timeout = const Duration(seconds: 45),
+  }) : tokenEndpoint =
+           tokenEndpoint ??
+           (const String.fromEnvironment('DIVAN_TOKEN_API_URL').isEmpty
+               ? endpoint.resolve('mobile-api.php')
+               : Uri.parse(
+                   const String.fromEnvironment('DIVAN_TOKEN_API_URL'),
+                 )),
+       client = client ?? (useTokens ? http.Client() : sessionClient(endpoint));
   final Uri endpoint;
+  final Uri tokenEndpoint;
   final http.Client client;
+  final bool useTokens;
   final Duration timeout;
   bool _authenticated = false;
-  bool _localPreviewAdmin = false;
+  String? _token;
   bool get authenticated => _authenticated;
-  bool get localPreviewAdmin => kDebugMode && _localPreviewAdmin;
-  bool get canManage => authenticated || localPreviewAdmin;
-
-  // Temporary preview access. This branch is compiled out of release builds.
-  bool unlockLocalPreview(String username, String password) {
-    if (!kDebugMode ||
-        username.trim().toLowerCase() != 'admin' ||
-        password != const String.fromEnvironment('DIVAN_PREVIEW_PASSWORD')) {
-      return false;
-    }
-    if (!_localPreviewAdmin) {
-      _localPreviewAdmin = true;
-      notifyListeners();
-    }
-    return true;
-  }
+  bool get canManage => authenticated;
 
   set authenticated(bool value) {
     if (_authenticated == value) return;
@@ -92,8 +89,78 @@ class PostApi extends ChangeNotifier {
     ))().timeout(timeout);
   }
 
+  Future<Map<String, dynamic>> _json(
+    String action, {
+    String method = 'POST',
+    Map<String, String>? fields,
+  }) async {
+    final request = http.Request(
+      method,
+      tokenEndpoint.replace(queryParameters: {'action': action}),
+    )..followRedirects = false;
+    request.headers['accept'] = 'application/json';
+    if (_token != null) request.headers['authorization'] = 'Bearer $_token';
+    if (fields != null) request.bodyFields = fields;
+    final response = await (() async => http.Response.fromStream(
+      await client.send(request),
+    ))().timeout(timeout);
+    if (response.statusCode == 401) {
+      _token = null;
+      authenticated = false;
+      if (action == 'login') throw const InvalidCredentials();
+      if (action == 'me') throw const LoginRequired();
+      throw const PostRejected('ورود منقضی شده است؛ دوباره وارد حساب شوید.');
+    }
+    Map<String, dynamic>? data;
+    try {
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is Map<String, dynamic>) data = decoded;
+    } catch (_) {
+      /* Treat non-JSON responses as uncertain, not success. */
+    }
+    if (response.statusCode == 404 && data == null) {
+      throw const PostFailure(
+        'API ورود با توکن هنوز روی سرور نصب نشده است. فایل‌های بک‌اند و migration باید روی سایت اعمال شوند.',
+      );
+    }
+    if (response.statusCode >= 400 &&
+        response.statusCode < 500 &&
+        data != null) {
+      throw PostRejected(data['message'] as String? ?? 'درخواست پذیرفته نشد.');
+    }
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        data == null ||
+        data['ok'] != true) {
+      throw const PostFailure('پاسخ معتبر از API مدیریت دریافت نشد.');
+    }
+    return data;
+  }
+
   Future<void> login(String username, String password) async {
+    _token = null;
     authenticated = false;
+    if (useTokens) {
+      final data = await _json(
+        'login',
+        fields: {'username': username, 'password': password},
+      );
+      final token = data['access_token'];
+      if (token is! String ||
+          !RegExp(r'^[a-f0-9]{64}$').hasMatch(token) ||
+          data['token_type'] != 'Bearer') {
+        throw const PostFailure('پاسخ ورود معتبر نیست.');
+      }
+      _token = token;
+      try {
+        await _json('me', method: 'GET');
+      } catch (_) {
+        _token = null;
+        rethrow;
+      }
+      authenticated = true;
+      return;
+    }
     final response = await _request(
       'POST',
       url('index.php'),
@@ -103,8 +170,6 @@ class PostApi extends ChangeNotifier {
     if (response.statusCode >= 400) {
       throw PostFailure('سرور ورود را نپذیرفت (کد ${response.statusCode}).');
     }
-    // The existing PHP form reports a credential mismatch in its HTML, not
-    // with an HTTP error status. Do not report that as a cookie/network error.
     if (html
             .parse(utf8.decode(response.bodyBytes))
             .body
@@ -122,21 +187,23 @@ class PostApi extends ChangeNotifier {
   }
 
   Future<void> requireForm(String path, String button, [String? id]) async {
-    if (localPreviewAdmin && !authenticated) {
-      throw const PreviewOnlyAccess();
+    if (useTokens) {
+      if (_token == null) {
+        authenticated = false;
+        throw const LoginRequired();
+      }
+      await _json('me', method: 'GET');
+      return;
     }
     late http.Response response;
     try {
       response = await _request('GET', url(path, id));
     } catch (_) {
-      // Browsers report a blocked redirect as a ClientException. A subsequent
-      // attempt must be able to sign in again after session expiration.
       authenticated = false;
       rethrow;
     }
     final document = html.parse(utf8.decode(response.bodyBytes));
-    // The old PHP wrapper redirects without exiting. Never POST on a failed
-    // preflight, even if its response happens to contain the protected form.
+    // Legacy wrappers redirect without exiting; a form alone is not authority.
     if (response.statusCode != 200 ||
         document.querySelector('input[type="password"]') != null ||
         document.querySelector('[name="$button"]') == null) {
@@ -150,24 +217,39 @@ class PostApi extends ChangeNotifier {
     Map<String, String> fields, [
     String? id,
   ]) async {
+    if (useTokens) {
+      if (_token == null) throw const PostRejected('ابتدا وارد حساب شوید.');
+      final action = switch (path) {
+        'add-menu.php' => 'create',
+        'edit-menu.php' => 'update',
+        'delete-menu.php' => 'delete',
+        _ => throw const PostRejected('عملیات پشتیبانی نمی‌شود.'),
+      };
+      await _json(action, fields: {...fields, 'id': ?id});
+      return;
+    }
     await _request('POST', url(path, id), fields: fields);
-    // PHP's HTML banners are unreliable. PostService verifies via the read API.
+    // Both transports are confirmed by PostService via a subsequent read.
   }
 
   Future<void> logout() async {
     final hadServerSession = authenticated;
-    _localPreviewAdmin = false;
-    authenticated = false;
-    notifyListeners();
-    if (!hadServerSession) return;
     try {
-      await _request('GET', url('logout.php'));
+      if (_token != null && useTokens) {
+        await _json('logout');
+      } else if (hadServerSession && !useTokens) {
+        await _request('GET', url('logout.php'));
+      }
     } catch (_) {
-      // The local editor stays locked even when the server is unavailable.
+      // Clear local access even if server revocation could not be reached.
+    } finally {
+      _token = null;
+      authenticated = false;
     }
   }
 
   void close() {
+    _token = null;
     client.close();
     dispose();
   }

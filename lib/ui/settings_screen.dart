@@ -97,12 +97,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         if (widget.controller.isAdmin) ...[
           SoftMessage(
-            title: widget.controller.posts.api.localPreviewAdmin
-                ? 'مدیریت آزمایشی'
-                : 'مدیریت دیوان',
-            message: widget.controller.posts.api.localPreviewAdmin
-                ? 'ابزارها باز هستند، اما برای ثبت تغییر روی سایت ورود واقعی سرور لازم است.'
-                : 'امکانات ایجاد، ویرایش و حذف برای حساب مدیر فعال است.',
+            title: 'مدیریت دیوان',
+            message: 'امکانات ایجاد، ویرایش و حذف برای حساب مدیر فعال است.',
             icon: Icons.admin_panel_settings_outlined,
           ),
           ActionCard(

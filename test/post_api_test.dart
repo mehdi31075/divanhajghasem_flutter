@@ -9,6 +9,7 @@ void main() {
     () async {
       final requests = <http.Request>[];
       final api = PostApi(
+        useTokens: false,
         Uri.parse('http://example.test/api.php'),
         client: MockClient((request) async {
           requests.add(request);
@@ -43,6 +44,7 @@ void main() {
     'browser redirect exception invalidates session so the next attempt can log in',
     () async {
       final api = PostApi(
+        useTokens: false,
         Uri.parse('http://example.test/api.php'),
         client: MockClient((_) async {
           throw http.ClientException('Redirect disallowed');
@@ -60,6 +62,7 @@ void main() {
   test('PHP credential error is distinct from a lost session', () async {
     var requests = 0;
     final api = PostApi(
+      useTokens: false,
       Uri.parse('http://example.test/api.php'),
       client: MockClient((_) async {
         requests++;
@@ -83,6 +86,7 @@ void main() {
     'successful form POST without a persistent session is rejected',
     () async {
       final api = PostApi(
+        useTokens: false,
         Uri.parse('http://example.test/api.php'),
         client: MockClient(
           (request) async => request.method == 'POST'

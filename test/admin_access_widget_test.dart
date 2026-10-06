@@ -16,7 +16,7 @@ void main() {
   sqfliteFfiInit();
 
   testWidgets(
-    'five version taps unlock preview without PHP auth and logout locks it',
+    'five version taps authenticate on the server and logout locks management',
     (tester) async {
       final db = (await tester.runAsync(
         () => NotebookDatabase.open(
@@ -27,6 +27,7 @@ void main() {
       var loginPosts = 0;
       var logouts = 0;
       final api = PostApi(
+        useTokens: false,
         Uri.parse('http://example.test/api.php'),
         client: MockClient((request) async {
           if (request.method == 'POST' && request.url.path == '/index.php') {
@@ -74,16 +75,18 @@ void main() {
       await tester.tap(find.byKey(const Key('version-tap-target')));
       await tester.pumpAndSettle();
       expect(find.byType(ServerLoginScreen), findsOneWidget);
-      await tester.enterText(find.byKey(const Key('server-username')), 'admin');
+      await tester.enterText(
+        find.byKey(const Key('server-username')),
+        'admin-test',
+      );
       await tester.enterText(
         find.byKey(const Key('server-password')),
-        const String.fromEnvironment('DIVAN_PREVIEW_PASSWORD'),
+        'dummy-password',
       );
       await tester.tap(find.text('ورود'));
       await tester.pumpAndSettle();
-      expect(loginPosts, 0);
-      expect(api.authenticated, isFalse);
-      expect(api.localPreviewAdmin, isTrue);
+      expect(loginPosts, 1);
+      expect(api.authenticated, isTrue);
       expect(controller.isAdmin, isTrue);
       expect(find.text('پیش‌نویس‌های ادمین'), findsOneWidget);
       await tester.scrollUntilVisible(
@@ -93,7 +96,7 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('admin-logout')));
       await tester.pumpAndSettle();
-      expect(logouts, 0);
+      expect(logouts, 1);
       expect(controller.isAdmin, isFalse);
       expect(find.text('پیش‌نویس‌های ادمین'), findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());

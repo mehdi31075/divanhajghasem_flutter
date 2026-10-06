@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../data/post_api.dart';
 import 'widgets.dart';
@@ -31,33 +30,15 @@ class _ServerLoginScreenState extends State<ServerLoginScreen> {
       _error = null;
     });
     try {
-      if (kDebugMode) {
-        if (!widget.api.unlockLocalPreview(
-          _username.text.trim(),
-          _password.text,
-        )) {
-          throw const InvalidCredentials();
-        }
-      } else {
-        await widget.api.login(_username.text.trim(), _password.text);
-      }
+      await widget.api.login(_username.text.trim(), _password.text);
       _password.clear();
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) {
         setState(() {
-          if (error is InvalidCredentials) {
-            _error = error.message;
-          } else if (kIsWeb && Uri.base.origin != widget.api.endpoint.origin) {
-            _error =
-                'ورود از پیش‌نمایش وب به نشست سایت دسترسی ندارد. '
-                'سرور باید CORS و کوکی ورود را برای وب تنظیم کند؛ '
-                'ورود در نسخهٔ Android این محدودیت مرورگر را ندارد.';
-          } else if (error is PostFailure) {
-            _error = error.message;
-          } else {
-            _error = 'ارتباط با سرور برقرار نشد. دوباره تلاش کنید.';
-          }
+          _error = error is PostFailure
+              ? error.message
+              : 'ارتباط با سرور برقرار نشد. دوباره تلاش کنید.';
         });
       }
     } finally {
@@ -74,14 +55,10 @@ class _ServerLoginScreenState extends State<ServerLoginScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(kDebugMode ? 'ورود آزمایشی' : 'ورود به حساب')),
+    appBar: AppBar(title: const Text('ورود به حساب')),
     body: PageBody(
       children: [
-        Text(
-          kDebugMode
-              ? 'این ورود فقط ابزارهای مدیریت را برای آزمایش باز می‌کند؛ ذخیره روی سایت همچنان به نشست واقعی سرور نیاز دارد.'
-              : 'برای ذخیره و حذف مطالب روی سرور وارد حساب دیوان شوید.',
-        ),
+        const Text('برای ایجاد، ویرایش و حذف مطالب وارد حساب مدیر دیوان شوید.'),
         TextField(
           key: const Key('server-username'),
           controller: _username,

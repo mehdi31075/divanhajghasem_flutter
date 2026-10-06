@@ -32,7 +32,11 @@ void main() {
             endpoint: server.endpoint,
             client: MockClient(server.handle),
           ),
-          postApi: PostApi(server.endpoint, client: MockClient(server.handle)),
+          postApi: PostApi(
+            server.endpoint,
+            useTokens: false,
+            client: MockClient(server.handle),
+          ),
         );
         controller.posts.api.authenticated = scenario != 'login';
         await tester.runAsync(controller.refreshCategories);

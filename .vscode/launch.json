@@ -20,6 +20,19 @@
       ]
     },
     {
+      "name": "دیوان (web با API توکن پس از نصب سرور)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "deviceId": "chrome",
+      "args": [
+        "--wasm",
+        "--no-pub",
+        "--no-web-resources-cdn",
+        "--dart-define=DIVAN_API_URL=https://divanhajghasem.ir/mobile-api.php"
+      ]
+    },
+    {
       "name": "دیوان (profile)",
       "request": "launch",
       "type": "dart",

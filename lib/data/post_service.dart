@@ -134,6 +134,13 @@ class PostService {
           'cid': category,
           button: '1',
         }, original?.id);
+      } on PostRejected {
+        await library.database.db.delete(
+          'post_operations',
+          where: 'operation_key = ?',
+          whereArgs: [operationKey],
+        );
+        rethrow;
       } catch (_) {
         /* A timed-out POST may already have committed. Read only. */
       }
@@ -243,6 +250,13 @@ class PostService {
       if (fresh != null) {
         try {
           await api.submit('delete-menu.php', {'btnDelete': '1'}, article.id);
+        } on PostRejected {
+          await library.database.db.delete(
+            'post_operations',
+            where: 'operation_key = ?',
+            whereArgs: [operationKey],
+          );
+          rethrow;
         } catch (_) {
           /* Verify without repeating the delete. */
         }
