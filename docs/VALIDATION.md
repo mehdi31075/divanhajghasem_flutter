@@ -1,5 +1,12 @@
 <div dir="rtl" align="right">
 
+# تغییر اتصال بک‌اند به MariaDB — ۲۰۲۶/۱۰/۰۷
+
+- SQLite از تنظیمات، فایل فعال دیتابیس و fixtureهای بک‌اند حذف شد. فایل خالی توسعه پس از بررسی صفر بودن رکوردهای اصلی، خارج از پروژه پشتیبان گرفته شد. Flutter تغییری نکرده است.
+- تنظیمات نهایی بدون باز کردن اتصال PDO بررسی شدند: production، MySQL، localhost، divanhaj_db و utf8mb3_general_ci. رمز فقط در `.env` خصوصی و خارج از Git است.
+- ۶ آزمون مستقل محافظ دیتابیس با ۷ assertion و ۱۳ آزمون پنل موفق شدند. ۱۱ تست HTTP بدون دیتابیس مستقل MySQL skip شدند؛ اسکریپت‌های CRUD نیز بدون `.env.testing` از اجرا خودداری می‌کنند.
+- اجرای CRUD، migration و اتصال روی MariaDB واقعی هنوز تأیید نشده‌اند؛ دیتابیس زنده import یا تغییر داده نشد. نتایج SQLite در بخش‌های قدیمی زیر، گزارش تاریخی پیش از این تغییرند.
+
 # مهاجرت Laravel — ۲۰۲۶/۱۰/۰۷
 
 - Laravel 13.35 / PHP 8.3.35؛ Composer validate و audit وابستگی‌های production بدون خطا؛ optimize شامل config/routes/views موفق.
