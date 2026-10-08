@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../domain/library.dart';
+import '../domain/content_page.dart';
 
 class LegacyApi {
   LegacyApi({
@@ -53,6 +54,33 @@ class LegacyApi {
 
   Future<List<LibraryCategory>> categories() async =>
       (await _get({})).map(LibraryCategory.fromJson).toList();
+
+  Future<List<ContentPage>> pages() async {
+    final url = endpoint.resolve('pages.php');
+    final response = await client
+        .get(url, headers: {'cache-control': 'no-cache'})
+        .timeout(timeout);
+    if (response.statusCode != 200) {
+      throw http.ClientException('HTTP ${response.statusCode}', url);
+    }
+    final decoded = jsonDecode(
+      utf8.decode(response.bodyBytes).replaceFirst('\uFEFF', '').trim(),
+    );
+    if (decoded is! Map<String, dynamic> || decoded['pages'] is! List) {
+      throw const FormatException('Unexpected content pages response');
+    }
+    final pages = (decoded['pages'] as List).map((row) {
+      if (row is! Map<String, dynamic>) {
+        throw const FormatException('Invalid content page');
+      }
+      return ContentPage.fromJson(row);
+    }).toList();
+    if (pages.length != 3 ||
+        pages.map((page) => page.slug).toSet().length != 3) {
+      throw const FormatException('Missing or duplicate content pages');
+    }
+    return pages;
+  }
 
   Future<List<LibraryArticle>> articles(String categoryId) async {
     final rows = (await _get({

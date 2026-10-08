@@ -115,7 +115,6 @@ void main() {
     final note = await draft();
     server.authorized = false;
     await expectLater(controller.publish(note), throwsA(isA<LoginRequired>()));
-    expect(controller.isAdmin, isFalse);
     expect(server.posts, 0);
     expect(await db.note(note.id), isNotNull);
     expect(await controller.posts.pendingDraft(note.id), isFalse);

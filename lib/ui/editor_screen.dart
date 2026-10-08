@@ -6,8 +6,6 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 import '../domain/rich_text.dart';
 import 'rich_text_editor.dart';
 import '../application/notebook_controller.dart';
-import '../data/post_api.dart';
-import 'server_login_screen.dart';
 import '../domain/note.dart';
 import 'library_reader_screen.dart' show readableHtml;
 import 'theme.dart';
@@ -47,9 +45,6 @@ class _EditorScreenState extends State<EditorScreen>
   bool _changed = false;
   bool _loadingCategories = true;
   bool _categoriesFailed = false;
-  bool _publishing = false;
-  String? _postError;
-  bool _pendingPost = false;
 
   @override
   void initState() {
@@ -75,79 +70,6 @@ class _EditorScreenState extends State<EditorScreen>
     _rich.addListener(_richEdited);
     _subtitle = TextEditingController(text: _draft.subtitle);
     unawaited(_loadCategories());
-    unawaited(_loadPending());
-  }
-
-  Future<void> _loadPending() async {
-    try {
-      final pending = await widget.controller.posts.pendingDraft(_draft.id);
-      if (mounted) setState(() => _pendingPost = pending);
-    } catch (_) {
-      /* The service checks again before any request. */
-    }
-  }
-
-  Future<void> _publish() async {
-    if (_publishing || _finishing) return;
-    setState(() {
-      _publishing = true;
-      _postError = null;
-    });
-    try {
-      if (!await _lastWrite || _failed) {
-        throw const PostFailure('ابتدا پیش‌نویس را دوباره ذخیره کنید.');
-      }
-      if (!await _persist() || !mounted) return;
-      final pending = await widget.controller.posts.pendingDraft(_draft.id);
-      if (!mounted) return;
-      if (!pending &&
-          (_draft.categoryId == null ||
-              [
-                _draft.title,
-                _draft.subtitle,
-                _draft.body,
-              ].any((text) => text.trim().isEmpty))) {
-        throw const PostFailure('عنوان، عنوان فرعی، دسته و متن را کامل کنید.');
-      }
-      if (!pending &&
-          !await ensureServerLogin(context, widget.controller.posts.api)) {
-        return;
-      }
-      if (!mounted) return;
-      final remaining = await widget.controller.publish(_draft);
-      if (!mounted) return;
-      if (remaining != null) {
-        setState(() {
-          _draft = remaining;
-          _pendingPost = false;
-          _postError =
-              'نسخهٔ ارسال‌شده روی سرور ثبت شد. تغییرات تازه‌تر هنوز پیش‌نویس‌اند؛ برای ثبت آن‌ها دوباره ذخیره کنید.';
-        });
-        return;
-      }
-      widget.onPublished?.call();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('مطلب روی سرور ذخیره شد.')));
-      setState(() {
-        _allowPop = true;
-        _finishing = true;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.pop(context);
-      });
-    } catch (error) {
-      if (mounted) {
-        setState(
-          () => _postError = error is PostFailure
-              ? error.message
-              : 'ذخیره روی سرور تأیید نشد؛ پیش‌نویس محفوظ است.',
-        );
-      }
-      await _loadPending();
-    } finally {
-      if (mounted) setState(() => _publishing = false);
-    }
   }
 
   Future<void> _editBody() async {
@@ -172,7 +94,7 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   void _richEdited() {
-    if (!_richActive || _finishing || _publishing) return;
+    if (!_richActive || _finishing) return;
     final delta = jsonEncode(_rich.document.toDelta().toJson());
     if (delta == _lastRichDelta) return;
     _lastRichDelta = delta;
@@ -254,7 +176,7 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   Future<void> _finish() async {
-    if (_finishing || _publishing) {
+    if (_finishing) {
       return;
     }
     setState(() => _finishing = true);
@@ -290,10 +212,7 @@ class _EditorScreenState extends State<EditorScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused &&
-        _changed &&
-        !_finishing &&
-        !_publishing) {
+    if (state == AppLifecycleState.paused && _changed && !_finishing) {
       _lastWrite = _persist();
     }
   }
@@ -353,7 +272,7 @@ class _EditorScreenState extends State<EditorScreen>
           TextField(
             key: const Key('note-title'),
             controller: _title,
-            enabled: !_finishing && !_publishing,
+            enabled: !_finishing,
             onChanged: (_) => _edited(),
             decoration: const InputDecoration(labelText: 'عنوان یادداشت'),
             textInputAction: TextInputAction.next,
@@ -362,7 +281,7 @@ class _EditorScreenState extends State<EditorScreen>
           TextField(
             key: const Key('post-subtitle'),
             controller: _subtitle,
-            enabled: !_finishing && !_publishing,
+            enabled: !_finishing,
             onChanged: (_) => _edited(),
             decoration: const InputDecoration(labelText: 'عنوان فرعی'),
             textInputAction: TextInputAction.next,
@@ -391,7 +310,7 @@ class _EditorScreenState extends State<EditorScreen>
                     child: Text(category.name),
                   ),
               ],
-              onChanged: _finishing || _publishing
+              onChanged: _finishing
                   ? null
                   : (id) {
                       _draft = _draft.copyWith(
@@ -430,7 +349,7 @@ class _EditorScreenState extends State<EditorScreen>
               buildAsync: false,
             ),
             OutlinedButton.icon(
-              onPressed: _publishing || _finishing ? null : _editBody,
+              onPressed: _finishing ? null : _editBody,
               icon: const Icon(Icons.edit_outlined),
               label: const Text('ویرایش متن مطلب'),
             ),
@@ -439,16 +358,10 @@ class _EditorScreenState extends State<EditorScreen>
               controller: _rich,
               baseUrl: widget.controller.library.api.endpoint,
               fontSize: widget.controller.textSize,
-              enabled: !_finishing && !_publishing,
-            ),
-          if (_postError != null)
-            SoftMessage(
-              title: 'ذخیره تکمیل نشد',
-              message: _postError!,
-              isError: true,
+              enabled: !_finishing,
             ),
           OutlinedButton(
-            onPressed: _finishing || _publishing ? null : _finish,
+            onPressed: _finishing ? null : _finish,
             child: const Text('بستن و نگه‌داشتن پیش‌نویس'),
           ),
           const Text(
@@ -456,22 +369,6 @@ class _EditorScreenState extends State<EditorScreen>
             style: TextStyle(fontSize: 16, color: NotebookColors.muted),
           ),
         ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: FilledButton(
-            key: const Key('publish-post'),
-            onPressed: _finishing || _publishing ? null : _publish,
-            child: Text(
-              _publishing
-                  ? 'در حال بررسی...'
-                  : _pendingPost
-                  ? 'بررسی نتیجهٔ ارسال'
-                  : 'ذخیره روی سرور',
-            ),
-          ),
-        ),
       ),
     ),
   );

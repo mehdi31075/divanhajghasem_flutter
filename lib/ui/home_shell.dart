@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import '../application/notebook_controller.dart';
-import '../domain/note.dart';
-import 'editor_screen.dart';
 import 'categories_screen.dart';
 import 'settings_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
+import 'content_page_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key, required this.controller});
@@ -112,16 +111,23 @@ class _Home extends StatelessWidget {
         icon: Icons.auto_stories_outlined,
         onTap: onCategories,
       ),
-      if (controller.isAdmin)
-        FilledButton.icon(
-          key: const Key('new-note'),
-          icon: const Icon(Icons.add),
-          label: const Text('مطلب تازه'),
-          onPressed: () => Navigator.push(
+      for (final page in const [
+        ('first-talk', 'سخن اول', Icons.bookmark_border),
+        ('last-talk', 'سخن آخر', Icons.menu_book_outlined),
+        ('contact', 'تماس با ما', Icons.mail_outline),
+      ])
+        ActionCard(
+          key: Key('page-${page.$1}'),
+          title: page.$2,
+          icon: page.$3,
+          onTap: () => Navigator.push<void>(
             context,
-            MaterialPageRoute<void>(
-              builder: (_) =>
-                  EditorScreen(controller: controller, initial: Note.empty()),
+            MaterialPageRoute(
+              builder: (_) => ContentPageScreen(
+                controller: controller,
+                slug: page.$1,
+                label: page.$2,
+              ),
             ),
           ),
         ),

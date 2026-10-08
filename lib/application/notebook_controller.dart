@@ -18,7 +18,6 @@ class NotebookController extends ChangeNotifier {
   final NotebookDatabase database;
   late final LibraryRepository library;
   late final PostService posts;
-  bool get isAdmin => posts.api.canManage;
 
   @override
   void dispose() {

@@ -3,8 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../application/notebook_controller.dart';
 import '../domain/library.dart';
-import '../domain/note.dart';
-import 'editor_screen.dart';
 import 'library_reader_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -175,24 +173,6 @@ class LibraryArticlesScreen extends StatelessWidget {
   Widget build(BuildContext context) => _CachedLibraryPage<LibraryArticle>(
     title: plainHtml(category.name),
     changes: controller.library,
-    header: controller.isAdmin
-        ? FilledButton.icon(
-            key: const Key('new-category-post'),
-            onPressed: () => Navigator.push<void>(
-              context,
-              MaterialPageRoute<void>(
-                builder: (_) => EditorScreen(
-                  controller: controller,
-                  initial: Note.empty().copyWith(
-                    categoryId: controller.library.noteCategoryId(category.id),
-                  ),
-                ),
-              ),
-            ),
-            icon: const Icon(Icons.add),
-            label: const Text('مطلب تازه در این دسته'),
-          )
-        : null,
     cached: () => controller.library.cachedArticles(category.id),
     refresh: () => controller.library.refreshArticles(category.id),
     searchText: (article) => article.searchableText,

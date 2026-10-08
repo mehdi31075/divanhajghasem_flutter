@@ -11,7 +11,7 @@ import 'package:hajqasem_app/data/notebook_database.dart';
 void main() {
   sqfliteFfiInit();
   testWidgets(
-    'empty home stays RTL and fits a narrow screen with large system text',
+    'public home stays RTL and fits a narrow screen with large system text',
     (tester) async {
       tester.view.physicalSize = const Size(320, 640);
       tester.view.devicePixelRatio = 1;
@@ -42,21 +42,8 @@ void main() {
       expect(tester.takeException(), isNull);
       controller.posts.api.authenticated = true;
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('new-note')),
-        150,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('new-note')));
-      await tester.runAsync(() => database.preference('barrier'));
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('note-title')),
-        150,
-        scrollable: find.byType(Scrollable).last,
-      );
-      expect(find.byKey(const Key('note-title')), findsOneWidget);
+      expect(find.byKey(const Key('new-note')), findsNothing);
+      expect(find.byKey(const Key('note-title')), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.runAsync(database.close);

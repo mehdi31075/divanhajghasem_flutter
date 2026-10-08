@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../domain/library.dart';
+import '../domain/content_page.dart';
 import 'legacy_api.dart';
 import 'notebook_database.dart';
 
@@ -99,6 +100,15 @@ class LibraryRepository extends ChangeNotifier {
 
   Future<List<LibraryArticle>?> cachedArticles(String id) async =>
       (await _cached('category:$id'))?.map(LibraryArticle.fromJson).toList();
+
+  Future<List<ContentPage>?> cachedPages() async =>
+      (await _cached('pages'))?.map(ContentPage.fromJson).toList();
+
+  Future<List<ContentPage>> refreshPages() => _refresh('pages', () async {
+    final pages = await api.pages();
+    await _store('pages', pages.map((page) => page.toJson()).toList());
+    return pages;
+  });
 
   Future<List<LibraryCategory>> refreshCategories() =>
       _refresh('categories', () async {

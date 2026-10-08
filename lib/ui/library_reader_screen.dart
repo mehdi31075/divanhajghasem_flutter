@@ -6,9 +6,6 @@ import '../application/notebook_controller.dart';
 import '../domain/library.dart';
 import 'widgets.dart';
 import 'theme.dart';
-import 'editor_screen.dart';
-import '../data/post_api.dart';
-import 'server_login_screen.dart';
 
 // Preserve the original HTML in SQLite; adapt only its presentation so the
 // old editor's fixed font sizes cannot override the reader's text-size setting.
@@ -71,9 +68,6 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
   final _scroll = ScrollController();
   Timer? _timer;
   bool _ready = false;
-  bool _working = false;
-  String? _error;
-  bool _pendingDelete = false;
   late final String _html;
   String get _positionKey =>
       'library-scroll:${widget.controller.library.api.endpoint}:${widget.article.id}';
@@ -91,90 +85,6 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
       _timer = Timer(const Duration(milliseconds: 200), _savePosition);
     });
     unawaited(_restorePosition());
-    unawaited(_loadPendingDelete());
-  }
-
-  Future<void> _edit() async {
-    if (_working) return;
-    setState(() {
-      _working = true;
-      _error = null;
-    });
-    try {
-      final draft = await widget.controller.draftForArticle(widget.article);
-      if (!mounted) return;
-      var published = false;
-      await Navigator.push<void>(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => EditorScreen(
-            controller: widget.controller,
-            initial: draft,
-            onPublished: () => published = true,
-          ),
-        ),
-      );
-      if (published && mounted) Navigator.pop(context);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'ویرایش مطلب باز نشد.');
-    } finally {
-      if (mounted) setState(() => _working = false);
-    }
-  }
-
-  Future<void> _loadPendingDelete() async {
-    try {
-      final pending = await widget.controller.posts.pendingDelete(
-        widget.article.id,
-      );
-      if (mounted) setState(() => _pendingDelete = pending);
-    } catch (_) {}
-  }
-
-  Future<void> _delete() async {
-    if (_working) return;
-    setState(() {
-      _working = true;
-      _error = null;
-    });
-    try {
-      final pending = await widget.controller.posts.pendingDelete(
-        widget.article.id,
-      );
-      if (!mounted) return;
-      if (!pending) {
-        if (!await confirm(
-          context,
-          'حذف مطلب از سرور؟',
-          '«${plainHtml(widget.article.title)}» از سرور حذف می‌شود. سرور فعلی سطل زباله ندارد و این حذف قابل بازگردانی نیست.',
-          action: 'حذف از سرور',
-        )) {
-          return;
-        }
-        if (!mounted ||
-            !await ensureServerLogin(context, widget.controller.posts.api)) {
-          return;
-        }
-      }
-      await widget.controller.deletePost(widget.article);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حذف مطلب از سرور تأیید شد.')),
-        );
-        Navigator.pop(context);
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(
-          () => _error = error is PostFailure
-              ? error.message
-              : 'حذف مطلب از سرور تأیید نشد.',
-        );
-      }
-      await _loadPendingDelete();
-    } finally {
-      if (mounted) setState(() => _working = false);
-    }
   }
 
   Future<void> _restorePosition() async {
@@ -230,7 +140,7 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.controller,
     builder: (context, _) => PopScope(
-      canPop: !_working,
+      canPop: true,
       child: Scaffold(
         appBar: AppBar(title: const Text('مطالعهٔ دیوان')),
         body: SingleChildScrollView(
@@ -267,38 +177,6 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              if (_error != null)
-                SoftMessage(
-                  title: 'درخواست تکمیل نشد',
-                  message: _error!,
-                  isError: true,
-                ),
-              if (widget.controller.isAdmin)
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    FilledButton.icon(
-                      key: const Key('edit-post'),
-                      onPressed: _working ? null : _edit,
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('ویرایش مطلب'),
-                    ),
-                    OutlinedButton.icon(
-                      key: const Key('delete-post'),
-                      onPressed: _working ? null : _delete,
-                      icon: const Icon(Icons.delete_outline),
-                      label: Text(
-                        _pendingDelete ? 'بررسی نتیجهٔ حذف' : 'حذف از سرور',
-                      ),
-                    ),
-                  ],
-                ),
-              if (_working)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('در حال بررسی...'),
-                ),
             ],
           ),
         ),
