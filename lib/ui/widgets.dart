@@ -6,6 +6,7 @@ class PageBody extends StatelessWidget {
   final List<Widget> children;
   @override
   Widget build(BuildContext context) => ListView(
+    key: key,
     padding: const EdgeInsets.all(24),
     children: [
       for (final child in children)

@@ -114,4 +114,49 @@ void main() {
     await expectLater(api.categories(), throwsA(isA<TimeoutException>()));
     pending.complete(http.Response('[]', 200));
   });
+
+  test(
+    'support sends plain text over HTTPS and can retrieve an admin response',
+    () async {
+      final requests = <http.Request>[];
+      const receipt = '0123456789abcdef0123456789abcdef';
+      final api = LegacyApi(
+        endpoint: Uri.parse('http://divanhajghasem.ir/api.php'),
+        client: MockClient((request) async {
+          requests.add(request);
+          if (request.url.queryParameters['action'] == 'support_create') {
+            return http.Response.bytes(
+              utf8.encode(jsonEncode({'ok': true, 'receipt': receipt})),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          return http.Response.bytes(
+            utf8.encode(
+              jsonEncode({
+                'ok': true,
+                'ticket': {
+                  'message': 'انتقاد فارسی',
+                  'reply': 'پاسخ مدیر',
+                  'created_at': '2026-10-09T12:00:00Z',
+                  'replied_at': '2026-10-09T13:00:00Z',
+                },
+              }),
+            ),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+      addTearDown(api.close);
+      expect(await api.submitSupportMessage('انتقاد فارسی'), receipt);
+      expect((await api.supportTicket(receipt))['reply'], 'پاسخ مدیر');
+      expect(requests.map((request) => request.url.scheme), ['https', 'https']);
+      expect(requests.map((request) => request.url.queryParameters['action']), [
+        'support_create',
+        'support_check',
+      ]);
+      expect(requests.first.bodyFields, {'message': 'انتقاد فارسی'});
+    },
+  );
 }

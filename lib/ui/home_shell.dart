@@ -5,6 +5,7 @@ import 'settings_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
 import 'content_page_screen.dart';
+import 'support_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key, required this.controller});
@@ -16,11 +17,13 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
   bool _categoriesVisited = false;
+  bool _supportVisited = false;
 
   void _selectTab(int value) {
     setState(() {
       _tab = value;
       if (value == 1) _categoriesVisited = true;
+      if (value == 2) _supportVisited = true;
     });
   }
 
@@ -28,7 +31,9 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.controller,
     builder: (context, _) => Scaffold(
-      appBar: AppBar(title: Text(['دیوان', 'دسته‌بندی‌ها', 'تنظیمات'][_tab])),
+      appBar: AppBar(
+        title: Text(['دیوان', 'دسته‌بندی‌ها', 'پشتیبانی', 'تنظیمات'][_tab]),
+      ),
       body: IndexedStack(
         index: _tab,
         children: [
@@ -38,6 +43,10 @@ class _HomeShellState extends State<HomeShell> {
           ),
           if (_categoriesVisited)
             CategoriesScreen(controller: widget.controller, embedded: true)
+          else
+            const SizedBox.shrink(),
+          if (_supportVisited)
+            SupportScreen(controller: widget.controller)
           else
             const SizedBox.shrink(),
           SettingsScreen(controller: widget.controller),
@@ -58,6 +67,12 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.grid_view_outlined),
             selectedIcon: Icon(Icons.grid_view_rounded),
             label: 'دسته‌بندی‌ها',
+          ),
+          NavigationDestination(
+            key: Key('support-tab'),
+            icon: Icon(Icons.support_agent_outlined),
+            selectedIcon: Icon(Icons.support_agent),
+            label: 'پشتیبانی',
           ),
           NavigationDestination(
             key: Key('settings-tab'),
