@@ -16,9 +16,25 @@ import 'package:hajqasem_app/domain/rich_text.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hajqasem_app/ui/theme.dart';
 import 'package:hajqasem_app/ui/editor_screen.dart';
+import 'package:hajqasem_app/ui/library_reader_screen.dart';
 
 void main() {
   sqfliteFfiInit();
+
+  test('reader keeps safe inline images and uploaded videos playable', () {
+    final output = html.parseFragment(readableHtml(
+      '<p>پیش از رسانه</p><figure><img src="upload/news-media/pic.png"></figure>'
+      '<figure class="media"><video controls playsinline><source src="/upload/news-media/clip.mp4" type="video/mp4"></video></figure>'
+      '<video src="javascript:alert(1)"></video>',
+      Uri.parse('https://divanhajghasem.ir/api.php'),
+    ));
+    expect(output.querySelector('img')!.attributes['src'],
+        'https://divanhajghasem.ir/upload/news-media/pic.png');
+    expect(output.querySelector('video')!.attributes.containsKey('controls'), isTrue);
+    expect(output.querySelector('video source')!.attributes['src'],
+        'https://divanhajghasem.ir/upload/news-media/clip.mp4');
+    expect(output.querySelectorAll('video'), hasLength(1));
+  });
 
   test('whitespace-only rich text does not become a publishable HTML body', () {
     final document = documentForNote(Note.empty().copyWith(body: '  \n '));

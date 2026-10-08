@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
+import 'package:video_player/video_player.dart';
 import 'package:html/parser.dart' as html;
 import '../application/notebook_controller.dart';
 import '../domain/library.dart';
@@ -37,8 +38,15 @@ String readableHtml(String source, Uri baseUrl) {
           ].contains(rule.split(':').first.trim().toLowerCase()),
         );
     element.attributes['style'] = styles.join(';');
-    if (element.localName == 'img') {
+    if (element.localName == 'img' ||
+        element.localName == 'video' ||
+        element.localName == 'source') {
       final raw = element.attributes['src'];
+      if (element.localName == 'video' &&
+          raw == null &&
+          element.querySelector('source[src]') != null) {
+        continue;
+      }
       final uri = raw == null ? null : Uri.tryParse(raw);
       final resolved = uri == null ? null : baseUrl.resolveUri(uri);
       if (resolved == null || !['http', 'https'].contains(resolved.scheme)) {
@@ -166,6 +174,17 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
                 child: HtmlWidget(
                   _html,
                   baseUrl: widget.controller.library.api.endpoint,
+                  factoryBuilder: () => _DivanWidgetFactory(),
+                  customWidgetBuilder: (element) {
+                    if (element.localName != 'video') return null;
+                    final src = element.attributes['src'] ??
+                        element.querySelector('source')?.attributes['src'];
+                    final uri = src == null ? null : Uri.tryParse(src);
+                    if (uri == null || !['http', 'https'].contains(uri.scheme)) {
+                      return null;
+                    }
+                    return _InlineVideoPlayer(key: ValueKey(src), url: uri);
+                  },
                   buildAsync: false,
                   textStyle: TextStyle(
                     fontFamily: 'Vazirmatn',
@@ -209,6 +228,84 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
             ),
           ),
         ),
+      ),
+    ),
+  );
+}
+
+class _DivanWidgetFactory extends WidgetFactory {}
+
+class _InlineVideoPlayer extends StatefulWidget {
+  const _InlineVideoPlayer({super.key, required this.url});
+  final Uri url;
+
+  @override
+  State<_InlineVideoPlayer> createState() => _InlineVideoPlayerState();
+}
+
+class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
+  late final VideoPlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(widget.url);
+    _controller.initialize().then((_) {
+      if (mounted) setState(() {});
+    }).catchError((Object _) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(12),
+    child: ColoredBox(
+      color: Colors.black,
+      child: ValueListenableBuilder<VideoPlayerValue>(
+        valueListenable: _controller,
+        builder: (context, value, _) {
+          if (value.hasError) {
+            return const AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Center(
+                child: Text(
+                  'این ویدیو در دسترس نیست.',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            );
+          }
+          if (!value.isInitialized) {
+            return const AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return AspectRatio(
+            aspectRatio: value.aspectRatio,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                VideoPlayer(_controller),
+                IconButton.filledTonal(
+                  tooltip: value.isPlaying ? 'مکث ویدیو' : 'پخش ویدیو',
+                  iconSize: 36,
+                  onPressed: () => value.isPlaying
+                      ? _controller.pause()
+                      : _controller.play(),
+                  icon: Icon(value.isPlaying ? Icons.pause : Icons.play_arrow),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     ),
   );

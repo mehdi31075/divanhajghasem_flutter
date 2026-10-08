@@ -85,6 +85,7 @@ class LegacyApi {
   Future<List<LibraryArticle>> articles(String categoryId) async {
     final rows = (await _get({
       'cat_id': categoryId,
+      'include_dates': '1',
     })).map(LibraryArticle.fromJson).toList();
     if (rows.any((article) => article.categoryId != categoryId)) {
       throw const FormatException('Category mismatch');
@@ -101,6 +102,7 @@ class LegacyApi {
   Future<LibraryArticle?> findArticle(String id) async {
     final rows = (await _get({
       'nid': id,
+      'include_dates': '1',
     })).map(LibraryArticle.fromJson).toList();
     if (rows.isEmpty) return null;
     if (rows.length != 1 || rows.single.id != id) {

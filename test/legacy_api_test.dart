@@ -61,7 +61,11 @@ void main() {
           .toString(),
       'http://divanhajghasem.ir/upload/category/cover.png',
     );
-    expect(paths.map((p) => p.query), ['', 'cat_id=61', 'nid=117']);
+    expect(paths.map((p) => p.query), [
+      '',
+      'cat_id=61&include_dates=1',
+      'nid=117&include_dates=1',
+    ]);
     expect(articles.single.subtitle, 'عنوان فرعی');
     expect(detail.htmlBody, '<p>سلام<br>دنیا</p>');
   });
