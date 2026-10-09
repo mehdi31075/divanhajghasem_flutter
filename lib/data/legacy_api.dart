@@ -188,9 +188,24 @@ class LegacyApi {
     return decoded;
   }
 
-  Future<void> submitSupportMessage(String token, String message) async {
-    await _supportPost('support_send', {'message': message}, token: token);
+  Future<void> submitSupportMessage(
+    String token,
+    String message, {
+    String? ticketId,
+  }) async {
+    final fields = <String, String>{'message': message};
+    if (ticketId != null && ticketId.isNotEmpty) {
+      fields['ticket_id'] = ticketId;
+    }
+    await _supportPost('support_send', fields, token: token);
   }
+
+  Future<void> submitSupportReply(
+    String token,
+    String ticketId,
+    String message,
+  ) =>
+      submitSupportMessage(token, message, ticketId: ticketId);
 
   Future<List<Map<String, dynamic>>> supportMessages(String token) async {
     final url = _supportUrl('support_mine');

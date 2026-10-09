@@ -108,6 +108,28 @@ class _SupportScreenState extends State<SupportScreen> {
     }
   }
 
+  Future<void> _sendReply(String ticketId, String text) async {
+    final token = widget.controller.accountToken;
+    if (token == null) return;
+    try {
+      await widget.controller.library.api.submitSupportReply(
+        token,
+        ticketId,
+        text,
+      );
+      if (!mounted) return;
+      await _refresh();
+    } catch (error) {
+      if (!mounted) return;
+      final message = _messageOf(error);
+      setState(() => _error = message);
+      if (message.contains('وارد حساب شوید') || message.contains('منقضی')) {
+        await widget.controller.logoutAccount();
+      }
+      rethrow;
+    }
+  }
+
   String _messageOf(Object error) =>
       error.toString().replaceFirst('Exception: ', '');
 
@@ -279,12 +301,36 @@ class _SupportScreenState extends State<SupportScreen> {
 
   Widget _ticketCard(Map<String, dynamic> message) {
     final id = message['id']?.toString() ?? '';
-    final reply = message['reply']?.toString();
-    final hasReply = reply?.trim().isNotEmpty == true;
-    final status = hasReply ? 'پاسخ داده شده' : 'در انتظار پاسخ';
     final createdAt = message['created_at'];
-    final repliedAt = message['replied_at'];
     final date = _formatDate(createdAt);
+
+    final thread = <Map<String, dynamic>>[
+      {
+        'sender': 'user',
+        'message': message['message']?.toString() ?? '',
+        'created_at': createdAt,
+      },
+    ];
+    final rawReplies = message['replies'];
+    if (rawReplies is List && rawReplies.isNotEmpty) {
+      for (final r in rawReplies.whereType<Map>()) {
+        thread.add(Map<String, dynamic>.from(r));
+      }
+    } else {
+      final reply = message['reply']?.toString();
+      if (reply?.trim().isNotEmpty == true) {
+        thread.add({
+          'sender': 'admin',
+          'message': reply!,
+          'created_at': message['replied_at'],
+        });
+      }
+    }
+
+    final lastEntry = thread.last;
+    final lastIsAdmin = lastEntry['sender'] == 'admin';
+    final status = lastIsAdmin ? 'پاسخ داده شده' : 'در انتظار پاسخ';
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
@@ -297,23 +343,27 @@ class _SupportScreenState extends State<SupportScreen> {
           child: Text('$status${date.isEmpty ? '' : ' · $date'}'),
         ),
         children: [
-          _chatBubble(
-            label: 'شما',
-            text: message['message']?.toString() ?? '',
-            date: date,
-            alignment: AlignmentDirectional.centerEnd,
-            background: NotebookColors.soft,
-          ),
+          for (int i = 0; i < thread.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            if (thread[i]['sender'] == 'admin')
+              _chatBubble(
+                label: 'پشتیبانی دیوان',
+                text: thread[i]['message']?.toString() ?? '',
+                date: _formatDate(thread[i]['created_at']),
+                alignment: AlignmentDirectional.centerStart,
+                background: Colors.white,
+              )
+            else
+              _chatBubble(
+                label: 'شما',
+                text: thread[i]['message']?.toString() ?? '',
+                date: _formatDate(thread[i]['created_at']),
+                alignment: AlignmentDirectional.centerEnd,
+                background: NotebookColors.soft,
+              ),
+          ],
           const SizedBox(height: 12),
-          if (hasReply)
-            _chatBubble(
-              label: 'پشتیبانی دیوان',
-              text: reply!,
-              date: _formatDate(repliedAt),
-              alignment: AlignmentDirectional.centerStart,
-              background: Colors.white,
-            )
-          else
+          if (!lastIsAdmin) ...[
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: Container(
@@ -337,6 +387,13 @@ class _SupportScreenState extends State<SupportScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+          ],
+          _TicketReplyComposer(
+            key: Key('ticket-reply-composer-$id'),
+            ticketId: id,
+            onSend: (text) => _sendReply(id, text),
+          ),
         ],
       ),
     );
@@ -397,4 +454,91 @@ class _SupportScreenState extends State<SupportScreen> {
     final time = localizations.formatTimeOfDay(TimeOfDay.fromDateTime(date));
     return '${localizations.formatMediumDate(date)} · $time';
   }
+}
+
+class _TicketReplyComposer extends StatefulWidget {
+  const _TicketReplyComposer({
+    super.key,
+    required this.ticketId,
+    required this.onSend,
+  });
+
+  final String ticketId;
+  final Future<void> Function(String text) onSend;
+
+  @override
+  State<_TicketReplyComposer> createState() => _TicketReplyComposerState();
+}
+
+class _TicketReplyComposerState extends State<_TicketReplyComposer> {
+  final _controller = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      await widget.onSend(text);
+      if (mounted) _controller.clear();
+    } catch (_) {
+      // Retain typed text on error for user retry per AGENTS.md rule
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: NotebookColors.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          key: Key('support-ticket-reply-input-${widget.ticketId}'),
+          controller: _controller,
+          minLines: 2,
+          maxLines: 5,
+          maxLength: 3000,
+          textDirection: TextDirection.rtl,
+          textAlign: TextAlign.right,
+          decoration: const InputDecoration(
+            hintText: 'پاسخ شما به این گفتگو…',
+            counterText: '',
+            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: FilledButton.icon(
+            key: Key('support-ticket-reply-send-${widget.ticketId}'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(140, 64),
+            ),
+            onPressed: _sending ? null : _submit,
+            icon: _sending
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.send_outlined),
+            label: Text(_sending ? 'در حال ارسال…' : 'ارسال پاسخ'),
+          ),
+        ),
+      ],
+    ),
+  );
 }

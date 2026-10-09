@@ -210,4 +210,111 @@ void main() {
     await tester.runAsync(database.close);
     controller.dispose();
   });
+
+  testWidgets('user can send reply to an existing ticket conversation', (
+    tester,
+  ) async {
+    final calls = <String>[];
+    final sentReplies = <Map<String, String>>[];
+    final token = List.filled(64, 'a').join();
+    final database = (await tester.runAsync(
+      () => NotebookDatabase.open(
+        path: inMemoryDatabasePath,
+        factory: databaseFactoryFfi,
+      ),
+    ))!;
+    final controller = NotebookController(
+      database,
+      api: LegacyApi(
+        client: MockClient((request) async {
+          final action = request.url.queryParameters['action']!;
+          calls.add(action);
+          final body = switch (action) {
+            'support_mine' => {
+              'ok': true,
+              'messages': [
+                {
+                  'id': '31',
+                  'message': 'پیام اول کاربر',
+                  'reply': 'پاسخ اول مدیر',
+                  'created_at': '2026-10-09T12:00:00Z',
+                  'replied_at': '2026-10-09T12:10:00Z',
+                  'replies': [
+                    {
+                      'id': '1',
+                      'ticket_id': '31',
+                      'sender': 'admin',
+                      'message': 'پاسخ اول مدیر',
+                      'created_at': '2026-10-09T12:10:00Z',
+                    },
+                    if (sentReplies.isNotEmpty)
+                      {
+                        'id': '2',
+                        'ticket_id': '31',
+                        'sender': 'user',
+                        'message': sentReplies.last['message']!,
+                        'created_at': '2026-10-09T12:15:00Z',
+                      },
+                  ],
+                },
+              ],
+            },
+            'support_send' => (() {
+              sentReplies.add(Map<String, String>.from(request.bodyFields));
+              return {'ok': true};
+            })(),
+            _ => {'ok': true},
+          };
+          return http.Response.bytes(utf8.encode(jsonEncode(body)), 200);
+        }),
+      ),
+    );
+    await tester.runAsync(controller.load);
+    controller.accountToken = token;
+    controller.accountUser = {'name': 'کاربر', 'mobile': '+989123456789'};
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('fa'),
+        supportedLocales: const [Locale('fa')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        theme: notebookTheme(),
+        home: SupportScreen(controller: controller),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const Key('support-page')).last,
+      const Offset(0, -400),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('support-ticket-31')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('پیام اول کاربر'), findsOneWidget);
+    expect(find.text('پاسخ اول مدیر'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('support-ticket-reply-input-31')),
+      'تشکر از پیگیری، مشکلم حل شد',
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('support-page')).last,
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('support-ticket-reply-send-31')));
+    await tester.pumpAndSettle();
+
+    expect(sentReplies, hasLength(1));
+    expect(sentReplies.first['ticket_id'], '31');
+    expect(sentReplies.first['message'], 'تشکر از پیگیری، مشکلم حل شد');
+    expect(find.text('تشکر از پیگیری، مشکلم حل شد'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.runAsync(database.close);
+    controller.dispose();
+  });
 }

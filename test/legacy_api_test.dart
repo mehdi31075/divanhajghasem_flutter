@@ -174,8 +174,10 @@ void main() {
       );
       expect(session['access_token'], token);
       await api.submitSupportMessage(token, 'انتقاد فارسی');
+      await api.submitSupportReply(token, '42', 'پاسخ کاربر به تیکت');
       expect((await api.supportMessages(token)).single['reply'], 'پاسخ مدیر');
       await api.logoutSupport(token);
+      expect(requests.where((r) => r.url.queryParameters['action'] == 'support_send').last.bodyFields['ticket_id'], '42');
       expect(requests.map((request) => request.url.scheme).toSet(), {'https'});
       expect(requests.map((request) => request.url.path).toSet(), {
         '/index.php/mobile-api.php',
@@ -183,6 +185,7 @@ void main() {
       expect(requests.map((request) => request.url.queryParameters['action']), [
         'support_start',
         'support_verify',
+        'support_send',
         'support_send',
         'support_mine',
         'support_logout',
