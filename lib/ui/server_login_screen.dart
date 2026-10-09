@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../application/app_config.dart';
 import '../data/post_api.dart';
 import 'widgets.dart';
 
@@ -58,7 +59,7 @@ class _ServerLoginScreenState extends State<ServerLoginScreen> {
     appBar: AppBar(title: const Text('ورود به حساب')),
     body: PageBody(
       children: [
-        const Text('برای ایجاد، ویرایش و حذف مطالب وارد حساب مدیر دیوان انصارالحسین(ع) شوید.'),
+        Text(AppConfig.serverLoginPrompt),
         TextField(
           key: const Key('server-username'),
           controller: _username,

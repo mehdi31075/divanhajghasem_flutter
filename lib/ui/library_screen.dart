@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../application/app_config.dart';
 import '../application/notebook_controller.dart';
 import '../domain/library.dart';
 import 'library_reader_screen.dart';
@@ -19,13 +20,13 @@ class LibraryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _CachedLibraryPage<LibraryCategory>(
-    title: 'دسته‌بندی‌های دیوان انصارالحسین(ع)',
+    title: AppConfig.categoriesTitle,
     embedded: embedded,
     grid: true,
     cached: controller.cachedCategories,
     refresh: controller.refreshCategories,
     searchText: (category) => plainHtml('${category.name} ${category.author}'),
-    emptyMessage: 'هنوز دسته‌ای در دیوان انصارالحسین(ع) نیست.',
+    emptyMessage: AppConfig.emptyCategoriesMessage,
     itemBuilder: (context, category) => _CategoryCard(
       category: category,
       image: controller.library.api.categoryImage(category),

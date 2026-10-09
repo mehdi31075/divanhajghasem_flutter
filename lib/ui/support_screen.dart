@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../application/app_config.dart';
 import '../application/notebook_controller.dart';
 import 'account_login_dialog.dart';
 import 'theme.dart';
@@ -347,7 +347,7 @@ class _SupportScreenState extends State<SupportScreen> {
             if (i > 0) const SizedBox(height: 12),
             if (thread[i]['sender'] == 'admin')
               _chatBubble(
-                label: 'پشتیبانی دیوان انصارالحسین(ع)',
+                label: AppConfig.supportLabel,
                 text: thread[i]['message']?.toString() ?? '',
                 date: _formatDate(thread[i]['created_at']),
                 alignment: AlignmentDirectional.centerStart,

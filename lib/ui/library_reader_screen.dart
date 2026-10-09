@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:video_player/video_player.dart';
 import 'package:html/parser.dart' as html;
+import '../application/app_config.dart';
 import '../application/notebook_controller.dart';
 import '../domain/library.dart';
 import '../domain/jalali_date.dart';
@@ -209,7 +210,7 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
     builder: (context, _) => PopScope(
       canPop: true,
       child: Scaffold(
-        appBar: AppBar(title: const Text('مطالعهٔ دیوان انصارالحسین(ع)')),
+        appBar: AppBar(title: Text(AppConfig.readerTitle)),
         body: SingleChildScrollView(
           controller: _scroll,
           padding: const EdgeInsets.all(24),

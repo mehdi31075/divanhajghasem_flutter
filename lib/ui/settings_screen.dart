@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../application/app_config.dart';
 import '../application/notebook_controller.dart';
 import 'account_login_dialog.dart';
 import 'theme.dart';
@@ -109,12 +110,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             key: const Key('version-tap-target'),
             onTap: null,
             borderRadius: BorderRadius.circular(12),
-            child: const Padding(
-              padding: EdgeInsets.all(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
               child: Text(
-                'دیوان انصارالحسین(ع) · نسخهٔ ۰.۱.۰',
+                '${AppConfig.appName} · نسخهٔ ${AppConfig.appVersion}',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: NotebookTypeScale.small,
                   color: NotebookColors.muted,
                 ),

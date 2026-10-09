@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:hajqasem_app/application/app_config.dart';
 import 'package:hajqasem_app/application/notebook_controller.dart';
 import 'package:hajqasem_app/data/legacy_api.dart';
 import 'package:hajqasem_app/data/notebook_database.dart';
@@ -199,11 +200,11 @@ void main() {
     expect(find.text('پاسخ مدیر'), findsNothing);
     expect(find.byKey(const Key('support-message')), findsNothing);
     expect(find.byKey(const Key('support-new-ticket')), findsOneWidget);
-    expect(find.text('پشتیبانی دیوان انصارالحسین(ع)'), findsNothing);
+    expect(find.text(AppConfig.supportLabel), findsNothing);
     await tester.tap(find.byKey(const Key('support-ticket-31')));
     await tester.pumpAndSettle();
     expect(find.text('پیشنهاد فارسی'), findsOneWidget);
-    expect(find.text('پشتیبانی دیوان انصارالحسین(ع)'), findsOneWidget);
+    expect(find.text(AppConfig.supportLabel), findsOneWidget);
     expect(find.text('پاسخ مدیر'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());

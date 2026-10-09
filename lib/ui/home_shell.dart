@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../application/app_config.dart';
 import '../application/notebook_controller.dart';
 import 'categories_screen.dart';
 import 'settings_screen.dart';
@@ -32,7 +33,7 @@ class _HomeShellState extends State<HomeShell> {
     listenable: widget.controller,
     builder: (context, _) => Scaffold(
       appBar: AppBar(
-        title: Text(['دیوان انصارالحسین(ع)', 'دسته‌بندی‌ها', 'پشتیبانی', 'تنظیمات'][_tab]),
+        title: Text([AppConfig.appName, 'دسته‌بندی‌ها', 'پشتیبانی', 'تنظیمات'][_tab]),
       ),
       body: IndexedStack(
         index: _tab,
@@ -99,7 +100,7 @@ class _Home extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'به دیوان انصارالحسین(ع) خوش آمدید',
+                  AppConfig.welcomeMessage,
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const Text('دسته‌بندی‌ها و مطالب را مرور کنید.'),
@@ -121,7 +122,7 @@ class _Home extends StatelessWidget {
         ],
       ),
       ActionCard(
-        title: 'دسته‌بندی‌ها و مطالب دیوان انصارالحسین(ع)',
+        title: AppConfig.categoriesTitle,
         subtitle: 'از میان دسته‌های تصویری انتخاب کنید',
         icon: Icons.auto_stories_outlined,
         onTap: onCategories,
@@ -146,10 +147,10 @@ class _Home extends StatelessWidget {
             ),
           ),
         ),
-      const SoftMessage(
-        title: 'مطالعهٔ دیوان انصارالحسین(ع)',
+      SoftMessage(
+        title: AppConfig.readerTitle,
         message:
-            'مطالب از دیوان انصارالحسین(ع) بارگذاری می‌شوند و پس از باز شدن، برای مطالعهٔ بدون اینترنت هم در دسترس‌اند.',
+            'مطالب از ${AppConfig.appName} بارگذاری می‌شوند و پس از باز شدن، برای مطالعهٔ بدون اینترنت هم در دسترس‌اند.',
         icon: Icons.auto_stories_outlined,
       ),
     ],

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:hajqasem_app/data/legacy_api.dart';
 import 'package:hajqasem_app/main.dart';
+import 'package:hajqasem_app/application/app_config.dart';
 import 'package:hajqasem_app/application/notebook_controller.dart';
 import 'package:hajqasem_app/data/notebook_database.dart';
 
@@ -35,9 +36,9 @@ void main() {
       await tester.runAsync(controller.refreshCategories);
       await tester.pumpWidget(HajQasemApp(controller: controller));
       await tester.pumpAndSettle();
-      final homeContext = tester.element(find.text('به دیوان انصارالحسین(ع) خوش آمدید'));
+      final homeContext = tester.element(find.text(AppConfig.welcomeMessage));
       expect(Directionality.of(homeContext), TextDirection.rtl);
-      expect(find.text('به دیوان انصارالحسین(ع) خوش آمدید'), findsOneWidget);
+      expect(find.text(AppConfig.welcomeMessage), findsOneWidget);
       expect(find.byKey(const Key('new-note')), findsNothing);
       expect(tester.takeException(), isNull);
       controller.posts.api.authenticated = true;
