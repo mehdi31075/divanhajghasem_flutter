@@ -10,6 +10,7 @@ import '../data/library_repository.dart';
 import '../data/post_api.dart';
 import '../data/post_service.dart';
 import '../data/token_vault.dart';
+import '../domain/jalali_date.dart';
 
 class NotebookController extends ChangeNotifier {
   NotebookController(
@@ -17,13 +18,16 @@ class NotebookController extends ChangeNotifier {
     LegacyApi? api,
     PostApi? postApi,
     TokenVault? tokenVault,
-  }) : tokenVault = tokenVault ?? MemoryTokenVault() {
+    JalaliDateService? dateService,
+  }) : tokenVault = tokenVault ?? MemoryTokenVault(),
+       dateService = dateService ?? const ShamsiDateService() {
     library = LibraryRepository(database, api ?? LegacyApi());
     posts = PostService(library, postApi ?? PostApi(library.api.endpoint));
     posts.api.addListener(notifyListeners);
   }
   final NotebookDatabase database;
   final TokenVault tokenVault;
+  final JalaliDateService dateService;
   late final LibraryRepository library;
   late final PostService posts;
 

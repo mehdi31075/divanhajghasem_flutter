@@ -133,7 +133,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ? 'یادداشت بی‌عنوان'
                     : version.title,
                 subtitle:
-                    '${relativeDate(version.createdAt)} · ${faDigits(version.createdAt.hour.toString().padLeft(2, '0'))}:${faDigits(version.createdAt.minute.toString().padLeft(2, '0'))}',
+                    '${widget.controller.dateService.relativeDate(version.createdAt)} · ${faDigits(version.createdAt.hour.toString().padLeft(2, '0'))}:${faDigits(version.createdAt.minute.toString().padLeft(2, '0'))}',
                 icon: Icons.history,
                 onTap: () => _preview(version),
               ),

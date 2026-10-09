@@ -63,6 +63,30 @@ void main() {
           .toString(),
       'http://divanhajghasem.ir/upload/category/cover.png',
     );
+    expect(
+      api
+          .categoryImage(
+            const LibraryCategory(
+              id: '61',
+              name: 'دستهٔ فارسی',
+              image: '/index.php/upload/category/cover.png',
+            ),
+          )
+          .toString(),
+      'http://divanhajghasem.ir/upload/category/cover.png',
+    );
+    expect(
+      api
+          .categoryImage(
+            const LibraryCategory(
+              id: '61',
+              name: 'دستهٔ فارسی',
+              image: 'http://divanhajghasem.ir/index.php/upload/category/cover.png',
+            ),
+          )
+          .toString(),
+      'http://divanhajghasem.ir/upload/category/cover.png',
+    );
     expect(paths.map((p) => p.query), [
       '',
       'cat_id=61&include_dates=1&include_views=1',

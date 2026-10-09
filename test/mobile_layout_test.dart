@@ -35,9 +35,9 @@ void main() {
       await tester.runAsync(controller.refreshCategories);
       await tester.pumpWidget(HajQasemApp(controller: controller));
       await tester.pumpAndSettle();
-      final homeContext = tester.element(find.text('به دیوان خوش آمدید'));
+      final homeContext = tester.element(find.text('به دیوان انصارالحسین(ع) خوش آمدید'));
       expect(Directionality.of(homeContext), TextDirection.rtl);
-      expect(find.text('به دیوان خوش آمدید'), findsOneWidget);
+      expect(find.text('به دیوان انصارالحسین(ع) خوش آمدید'), findsOneWidget);
       expect(find.byKey(const Key('new-note')), findsNothing);
       expect(tester.takeException(), isNull);
       controller.posts.api.authenticated = true;

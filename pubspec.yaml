@@ -20,9 +20,7 @@ dependencies:
   url_launcher: ^6.3.3
   sqflite_common_ffi_web: ^1.1.1
   web: ^1.1.1
-  flutter_quill: ^11.5.0
-  flutter_quill_delta_from_html: ^1.5.3
-  vsc_quill_delta_to_html: ^1.0.5
+  shamsi_date: ^1.1.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

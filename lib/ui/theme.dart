@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../domain/jalali_date.dart';
+
 abstract final class NotebookColors {
   static const teal = Color(0xFF075F59);
   static const ivory = Color(0xFFFAF8F2);
@@ -162,18 +164,9 @@ String faDigits(Object value) => value.toString().split('').map((c) {
   return digit == null ? c : '۰۱۲۳۴۵۶۷۸۹'[digit];
 }).join();
 
-String relativeDate(DateTime time) {
-  final now = DateTime.now();
-  final days = DateTime(
-    now.year,
-    now.month,
-    now.day,
-  ).difference(DateTime(time.year, time.month, time.day)).inDays;
-  if (days <= 0) {
-    return 'امروز';
-  }
-  if (days == 1) {
-    return 'دیروز';
-  }
-  return '${faDigits(days)} روز پیش';
+String relativeDate(
+  DateTime time, {
+  JalaliDateService service = const ShamsiDateService(),
+}) {
+  return service.relativeDate(time);
 }

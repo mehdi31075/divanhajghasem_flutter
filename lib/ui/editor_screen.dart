@@ -1,13 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:flutter_quill/flutter_quill.dart' as quill;
-import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
-import '../domain/rich_text.dart';
-import 'rich_text_editor.dart';
 import '../application/notebook_controller.dart';
 import '../domain/note.dart';
-import 'library_reader_screen.dart' show readableHtml;
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -29,10 +23,7 @@ class _EditorScreenState extends State<EditorScreen>
     with WidgetsBindingObserver {
   late Note _draft;
   late TextEditingController _title;
-  late quill.QuillController _rich;
-  late String _lastRichDelta;
-  late bool _richActive;
-  bool _richLoadFailed = false;
+  late TextEditingController _body;
   late TextEditingController _subtitle;
   Future<bool> _lastWrite = Future.value(true);
   Future<void>? _baseWrite;
@@ -52,57 +43,29 @@ class _EditorScreenState extends State<EditorScreen>
     WidgetsBinding.instance.addObserver(this);
     _draft = widget.initial;
     _title = TextEditingController(text: _draft.title);
-    try {
-      _rich = quill.QuillController(
-        document: documentForNote(
-          _draft,
-          baseUrl: widget.controller.library.api.endpoint,
-        ),
-        selection: const TextSelection.collapsed(offset: 0),
-      );
-      _richActive = !_draft.bodyIsHtml || _draft.richTextDelta != null;
-    } catch (_) {
-      _rich = quill.QuillController.basic();
-      _richActive = false;
-      _richLoadFailed = true;
-    }
-    _lastRichDelta = jsonEncode(_rich.document.toDelta().toJson());
-    _rich.addListener(_richEdited);
+    _title.addListener(_titleEdited);
     _subtitle = TextEditingController(text: _draft.subtitle);
+    _subtitle.addListener(_subtitleEdited);
+    _body = TextEditingController(text: _draft.body);
+    _body.addListener(_bodyEdited);
     unawaited(_loadCategories());
   }
 
-  Future<void> _editBody() async {
-    if (_richLoadFailed) {
-      showFailure(
-        context,
-        'متن در ویرایشگر باز نشد. متن اصلی محفوظ است؛ عنوان و دسته را می‌توانید تغییر دهید.',
-      );
-      return;
-    }
-    if (!await confirm(
-      context,
-      'ویرایش متن مطلب',
-      'متن در ویرایشگر قالب‌دار باز می‌شود. قالب‌های پیچیدهٔ HTML ممکن است هنگام تغییر متن به قالب‌های پشتیبانی‌شده تبدیل شوند. نسخهٔ قبلی محفوظ می‌ماند.',
-      action: 'باز کردن ویرایشگر',
-    )) {
-      return;
-    }
-    if (!mounted) return;
-    if (!await _persist() || !mounted) return;
-    setState(() => _richActive = true);
+  void _titleEdited() {
+    if (_finishing || _title.text == _draft.title) return;
+    _draft = _draft.copyWith(title: _title.text);
+    _edited();
   }
 
-  void _richEdited() {
-    if (!_richActive || _finishing) return;
-    final delta = jsonEncode(_rich.document.toDelta().toJson());
-    if (delta == _lastRichDelta) return;
-    _lastRichDelta = delta;
-    _draft = _draft.copyWith(
-      body: documentHtml(_rich.document),
-      bodyIsHtml: true,
-      richTextDelta: delta,
-    );
+  void _subtitleEdited() {
+    if (_finishing || _subtitle.text == _draft.subtitle) return;
+    _draft = _draft.copyWith(subtitle: _subtitle.text);
+    _edited();
+  }
+
+  void _bodyEdited() {
+    if (_finishing || _body.text == _draft.body) return;
+    _draft = _draft.copyWith(body: _body.text, bodyIsHtml: false);
     _edited();
   }
 
@@ -221,9 +184,8 @@ class _EditorScreenState extends State<EditorScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _title.dispose();
-    _rich.removeListener(_richEdited);
-    _rich.dispose();
     _subtitle.dispose();
+    _body.dispose();
     super.dispose();
   }
 
@@ -339,27 +301,21 @@ class _EditorScreenState extends State<EditorScreen>
             )
           else if (widget.controller.categories.isEmpty)
             const Text('هنوز دسته‌بندی‌ای دریافت نشده است.'),
-          if (!_richActive) ...[
-            HtmlWidget(
-              readableHtml(_draft.body, widget.controller.library.api.endpoint),
-              textStyle: TextStyle(
-                fontSize: widget.controller.textSize,
-                height: 1.9,
-              ),
-              buildAsync: false,
+          TextField(
+            key: const Key('note-body'),
+            controller: _body,
+            enabled: !_finishing,
+            maxLines: null,
+            minLines: 6,
+            decoration: const InputDecoration(
+              labelText: 'متن مطلب',
+              alignLabelWithHint: true,
             ),
-            OutlinedButton.icon(
-              onPressed: _finishing ? null : _editBody,
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('ویرایش متن مطلب'),
-            ),
-          ] else
-            RichTextEditor(
-              controller: _rich,
-              baseUrl: widget.controller.library.api.endpoint,
+            style: TextStyle(
               fontSize: widget.controller.textSize,
-              enabled: !_finishing,
+              height: 1.9,
             ),
+          ),
           OutlinedButton(
             onPressed: _finishing ? null : _finish,
             child: const Text('بستن و نگه‌داشتن پیش‌نویس'),

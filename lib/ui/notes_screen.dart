@@ -165,7 +165,7 @@ class NoteCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${relativeDate(note.updatedAt)} · پیش‌نویس روی گوشی',
+              '${controller.dateService.relativeDate(note.updatedAt)} · پیش‌نویس روی گوشی',
               style: const TextStyle(
                 fontSize: NotebookTypeScale.small,
                 color: NotebookColors.teal,

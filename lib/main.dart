@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'application/notebook_controller.dart';
 import 'data/notebook_database.dart';
 import 'data/token_vault.dart';
@@ -97,7 +96,7 @@ class HajQasemApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    title: 'دیوان',
+    title: 'دیوان انصارالحسین(ع)',
     theme: notebookTheme(),
     locale: const Locale('fa'),
     supportedLocales: const [Locale('fa')],
@@ -105,7 +104,6 @@ class HajQasemApp extends StatelessWidget {
       GlobalMaterialLocalizations.delegate,
       GlobalWidgetsLocalizations.delegate,
       GlobalCupertinoLocalizations.delegate,
-      FlutterQuillLocalizations.delegate,
     ],
     home: HomeShell(controller: controller),
   );

@@ -5,6 +5,7 @@ import '../application/notebook_controller.dart';
 import '../domain/library.dart';
 import 'library_reader_screen.dart';
 import 'theme.dart';
+import 'web_image_view.dart';
 import 'widgets.dart';
 
 class LibraryScreen extends StatelessWidget {
@@ -18,13 +19,13 @@ class LibraryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _CachedLibraryPage<LibraryCategory>(
-    title: 'دسته‌بندی‌های دیوان',
+    title: 'دسته‌بندی‌های دیوان انصارالحسین(ع)',
     embedded: embedded,
     grid: true,
     cached: controller.cachedCategories,
     refresh: controller.refreshCategories,
     searchText: (category) => plainHtml('${category.name} ${category.author}'),
-    emptyMessage: 'هنوز دسته‌ای در دیوان نیست.',
+    emptyMessage: 'هنوز دسته‌ای در دیوان انصارالحسین(ع) نیست.',
     itemBuilder: (context, category) => _CategoryCard(
       category: category,
       image: controller.library.api.categoryImage(category),
@@ -52,6 +53,13 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = plainHtml(category.name);
+    final targetUrl = image;
+    final webUrl = (targetUrl != null &&
+            targetUrl.host == 'divanhajghasem.ir' &&
+            targetUrl.scheme == 'http')
+        ? targetUrl.replace(scheme: 'https')
+        : targetUrl;
+
     return Semantics(
       button: true,
       child: Tooltip(
@@ -69,30 +77,37 @@ class _CategoryCard extends StatelessWidget {
                   aspectRatio: 4 / 3,
                   child: ColoredBox(
                     color: NotebookColors.soft,
-                    child: image == null
+                    child: targetUrl == null
                         ? const _CategoryImagePlaceholder()
-                        : Image.network(
-                            image.toString(),
-                            webHtmlElementStrategy:
-                                WebHtmlElementStrategy.prefer,
-                            // Category artwork can contain lettering; show it whole.
-                            fit: BoxFit.contain,
-                            excludeFromSemantics: true,
-                            loadingBuilder: (context, child, progress) =>
-                                progress == null
-                                ? child
-                                : const Center(
-                                    child: SizedBox(
-                                      width: 28,
-                                      height: 28,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+                        : (kIsWeb
+                            ? (platformWebImage(
+                                  url: webUrl!,
+                                  alt: name,
+                                  fit: BoxFit.contain,
+                                ) ??
+                                const _CategoryImagePlaceholder())
+                            : Image.network(
+                                targetUrl.toString(),
+                                webHtmlElementStrategy:
+                                    WebHtmlElementStrategy.prefer,
+                                // Category artwork can contain lettering; show it whole.
+                                fit: BoxFit.contain,
+                                excludeFromSemantics: true,
+                                loadingBuilder: (context, child, progress) =>
+                                    progress == null
+                                    ? child
+                                    : const Center(
+                                        child: SizedBox(
+                                          width: 28,
+                                          height: 28,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                            errorBuilder: (_, _, _) =>
-                                const _CategoryImagePlaceholder(),
-                          ),
+                                errorBuilder: (_, _, _) =>
+                                    const _CategoryImagePlaceholder(),
+                              )),
                   ),
                 ),
                 Expanded(

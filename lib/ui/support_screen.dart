@@ -347,7 +347,7 @@ class _SupportScreenState extends State<SupportScreen> {
             if (i > 0) const SizedBox(height: 12),
             if (thread[i]['sender'] == 'admin')
               _chatBubble(
-                label: 'پشتیبانی دیوان',
+                label: 'پشتیبانی دیوان انصارالحسین(ع)',
                 text: thread[i]['message']?.toString() ?? '',
                 date: _formatDate(thread[i]['created_at']),
                 alignment: AlignmentDirectional.centerStart,
@@ -450,9 +450,7 @@ class _SupportScreenState extends State<SupportScreen> {
     if (value == null) return '';
     final date = DateTime.tryParse(value)?.toLocal();
     if (date == null) return '';
-    final localizations = MaterialLocalizations.of(context);
-    final time = localizations.formatTimeOfDay(TimeOfDay.fromDateTime(date));
-    return '${localizations.formatMediumDate(date)} · $time';
+    return widget.controller.dateService.formatDateTime(date);
   }
 }
 

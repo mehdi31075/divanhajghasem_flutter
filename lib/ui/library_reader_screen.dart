@@ -1,17 +1,67 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:video_player/video_player.dart';
 import 'package:html/parser.dart' as html;
 import '../application/notebook_controller.dart';
 import '../domain/library.dart';
+import '../domain/jalali_date.dart';
 import 'widgets.dart';
 import 'theme.dart';
+import 'web_image_view.dart';
 
 // Preserve the original HTML in SQLite; adapt only its presentation so the
 // old editor's fixed font sizes cannot override the reader's text-size setting.
 String readableHtml(String source, Uri baseUrl) {
   final fragment = html.parseFragment(source);
+
+  final siteOrigin = Uri(
+    scheme: baseUrl.scheme,
+    host: baseUrl.host,
+    port: baseUrl.hasPort ? baseUrl.port : null,
+  );
+
+  Uri? resolveMediaUri(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    var cleaned = raw.trim();
+    cleaned = cleaned.replaceAll('/index.php/upload/', '/upload/');
+    cleaned = cleaned.replaceAll('index.php/upload/', 'upload/');
+
+    final parsed = Uri.tryParse(cleaned);
+    if (parsed == null) return null;
+
+    if (parsed.isAbsolute) {
+      if (parsed.host == 'localhost' ||
+          parsed.host == '127.0.0.1' ||
+          parsed.host == 'divanhajghasem.ir') {
+        final safePath = parsed.path.replaceAll(
+          '/index.php/upload/',
+          '/upload/',
+        );
+        return Uri(
+          scheme: parsed.scheme,
+          host:
+              parsed.host == 'divanhajghasem.ir'
+                  ? 'divanhajghasem.ir'
+                  : siteOrigin.host,
+          port: parsed.host == 'divanhajghasem.ir' ? null : siteOrigin.port,
+          path: safePath.startsWith('/') ? safePath : '/$safePath',
+          query: parsed.hasQuery ? parsed.query : null,
+        );
+      }
+      return parsed;
+    }
+
+    final path =
+        cleaned.startsWith('/')
+            ? cleaned
+            : cleaned.startsWith('upload/')
+            ? '/$cleaned'
+            : '/upload/$cleaned';
+    return siteOrigin.replace(path: path);
+  }
+
   for (final element in fragment.querySelectorAll('*').toList()) {
     if (const [
       'script',
@@ -47,8 +97,7 @@ String readableHtml(String source, Uri baseUrl) {
           element.querySelector('source[src]') != null) {
         continue;
       }
-      final uri = raw == null ? null : Uri.tryParse(raw);
-      final resolved = uri == null ? null : baseUrl.resolveUri(uri);
+      final resolved = resolveMediaUri(raw);
       if (resolved == null || !['http', 'https'].contains(resolved.scheme)) {
         element.remove();
       } else {
@@ -160,7 +209,7 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
     builder: (context, _) => PopScope(
       canPop: true,
       child: Scaffold(
-        appBar: AppBar(title: const Text('مطالعهٔ دیوان')),
+        appBar: AppBar(title: const Text('مطالعهٔ دیوان انصارالحسین(ع)')),
         body: SingleChildScrollView(
           controller: _scroll,
           padding: const EdgeInsets.all(24),
@@ -177,8 +226,8 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
                   child: Text(plainHtml(widget.article.subtitle)),
                 ),
               const SizedBox(height: 16),
-              Text('تاریخ ایجاد: ${_articleDate(widget.article.createdAt)}'),
-              Text('آخرین ویرایش: ${_articleDate(widget.article.updatedAt)}'),
+              Text('تاریخ ایجاد: ${_articleDate(widget.article.createdAt, widget.controller.dateService)}'),
+              Text('آخرین ویرایش: ${_articleDate(widget.article.updatedAt, widget.controller.dateService)}'),
               const SizedBox(height: 6),
               Text(
                 'بازدید: $_viewCount',
@@ -191,16 +240,31 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
                   baseUrl: widget.controller.library.api.endpoint,
                   factoryBuilder: () => _DivanWidgetFactory(),
                   customWidgetBuilder: (element) {
-                    if (element.localName != 'video') return null;
-                    final src =
-                        element.attributes['src'] ??
-                        element.querySelector('source')?.attributes['src'];
-                    final uri = src == null ? null : Uri.tryParse(src);
-                    if (uri == null ||
-                        !['http', 'https'].contains(uri.scheme)) {
-                      return null;
+                    if (element.localName == 'video') {
+                      final src =
+                          element.attributes['src'] ??
+                          element.querySelector('source')?.attributes['src'];
+                      final uri = src == null ? null : Uri.tryParse(src);
+                      if (uri == null ||
+                          !['http', 'https'].contains(uri.scheme)) {
+                        return null;
+                      }
+                      return _InlineVideoPlayer(key: ValueKey(src), url: uri);
                     }
-                    return _InlineVideoPlayer(key: ValueKey(src), url: uri);
+                    if (element.localName == 'img') {
+                      final src = element.attributes['src'];
+                      final uri = src == null ? null : Uri.tryParse(src);
+                      if (uri == null ||
+                          !['http', 'https'].contains(uri.scheme)) {
+                        return null;
+                      }
+                      return _InlineImageViewer(
+                        key: ValueKey(src),
+                        url: uri,
+                        alt: element.attributes['alt'] ?? '',
+                      );
+                    }
+                    return null;
                   },
                   buildAsync: false,
                   textStyle: TextStyle(
@@ -331,9 +395,93 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
   );
 }
 
-String _articleDate(DateTime? value) {
+String _articleDate(DateTime? value, [JalaliDateService? service]) {
   if (value == null) return 'ثبت نشده';
-  final date = value.toLocal();
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${faDigits('${date.year}/${two(date.month)}/${two(date.day)} · ${two(date.hour)}:${two(date.minute)}')} (میلادی)';
+  return (service ?? const ShamsiDateService()).formatDateTime(value);
 }
+
+class _InlineImageViewer extends StatefulWidget {
+  const _InlineImageViewer({
+    super.key,
+    required this.url,
+    required this.alt,
+  });
+
+  final Uri url;
+  final String alt;
+
+  @override
+  State<_InlineImageViewer> createState() => _InlineImageViewerState();
+}
+
+class _InlineImageViewerState extends State<_InlineImageViewer> {
+  int _retryKey = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) {
+      final webView = platformWebImage(url: widget.url, alt: widget.alt);
+      if (webView != null) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxHeight: 520,
+              minHeight: 180,
+            ),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: webView,
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            key: ValueKey('${widget.url}:$_retryKey'),
+            widget.url.toString(),
+            fit: BoxFit.contain,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return Container(
+                height: 200,
+                color: Colors.black12,
+                alignment: Alignment.center,
+                child: const CircularProgressIndicator(),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) => Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('تصویر در دسترس نیست.'),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => setState(() => _retryKey++),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('تلاش دوباره'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

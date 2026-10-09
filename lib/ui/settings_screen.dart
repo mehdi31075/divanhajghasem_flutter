@@ -112,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'دیوان · نسخهٔ ۰.۱.۰',
+                'دیوان انصارالحسین(ع) · نسخهٔ ۰.۱.۰',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: NotebookTypeScale.small,

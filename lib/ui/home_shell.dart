@@ -32,7 +32,7 @@ class _HomeShellState extends State<HomeShell> {
     listenable: widget.controller,
     builder: (context, _) => Scaffold(
       appBar: AppBar(
-        title: Text(['دیوان', 'دسته‌بندی‌ها', 'پشتیبانی', 'تنظیمات'][_tab]),
+        title: Text(['دیوان انصارالحسین(ع)', 'دسته‌بندی‌ها', 'پشتیبانی', 'تنظیمات'][_tab]),
       ),
       body: IndexedStack(
         index: _tab,
@@ -99,7 +99,7 @@ class _Home extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'به دیوان خوش آمدید',
+                  'به دیوان انصارالحسین(ع) خوش آمدید',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const Text('دسته‌بندی‌ها و مطالب را مرور کنید.'),
@@ -121,7 +121,7 @@ class _Home extends StatelessWidget {
         ],
       ),
       ActionCard(
-        title: 'دسته‌بندی‌ها و مطالب دیوان',
+        title: 'دسته‌بندی‌ها و مطالب دیوان انصارالحسین(ع)',
         subtitle: 'از میان دسته‌های تصویری انتخاب کنید',
         icon: Icons.auto_stories_outlined,
         onTap: onCategories,
@@ -147,9 +147,9 @@ class _Home extends StatelessWidget {
           ),
         ),
       const SoftMessage(
-        title: 'مطالعهٔ دیوان',
+        title: 'مطالعهٔ دیوان انصارالحسین(ع)',
         message:
-            'مطالب از دیوان بارگذاری می‌شوند و پس از باز شدن، برای مطالعهٔ بدون اینترنت هم در دسترس‌اند.',
+            'مطالب از دیوان انصارالحسین(ع) بارگذاری می‌شوند و پس از باز شدن، برای مطالعهٔ بدون اینترنت هم در دسترس‌اند.',
         icon: Icons.auto_stories_outlined,
       ),
     ],

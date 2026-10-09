@@ -276,11 +276,19 @@ class LegacyApi {
   }
 
   Uri? categoryImage(LibraryCategory category) {
-    final path = category.image.trim();
+    var path = category.image.trim();
     if (path.isEmpty) return null;
+    path = path
+        .replaceAll('/index.php/upload/', '/upload/')
+        .replaceAll('index.php/upload/', 'upload/');
     final parsed = Uri.tryParse(path);
     final uri = parsed?.isAbsolute == true
-        ? parsed!
+        ? (parsed!.host == 'divanhajghasem.ir' &&
+                parsed.path.contains('/index.php/upload/')
+            ? parsed.replace(
+                path: parsed.path.replaceAll('/index.php/upload/', '/upload/'),
+              )
+            : parsed)
         : Uri(
             scheme: endpoint.scheme,
             host: endpoint.host,
