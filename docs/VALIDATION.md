@@ -1,5 +1,14 @@
 <div dir="rtl" align="right">
 
+# اعتبارسنجی آخرین تغییر — ۲۰۲۶/۱۰/۰۹
+
+- Flutter: `flutter analyze` بدون issue؛ `flutter test` با ۶۷ تست موفق.
+- Laravel: `php artisan test` با ۲۵ تست و ۱۳۰ assertion موفق؛ ۱۵ Feature test دیتابیسی به دلیل نبود `.env.testing` با MySQL مستقل و نام `_test` skip شدند. در میان تست‌های قابل اجرا، قرارداد آزمون ثبت‌نام با OTP و نام، فهرست کاربران و شمار بازدید پوشش داده شده‌اند؛ اجرای آن‌ها علیه MySQL واقعی هنوز ممکن نشده است.
+- پنل: ۲۰ آزمون Node موفق، شامل CKEditor، آیکن‌های SVG داخلی، حفظ/پاک‌سازی HTML، پشتیبانی و فهرست کاربران.
+- `flutter pub get` موفق شد. `flutter_secure_storage` به 10.3.4 قفل شد و حداقل Android SDK به API 23 افزایش یافت.
+- `flutter build apk --debug` به مرحلهٔ تنظیم Gradle رسید، اما به‌دلیل timeout، قطع دانلود و TLS handshake از `dl.google.com` نتوانست artifactهای Android Gradle Plugin 7.4.2 را دریافت کند؛ APK در این نوبت ساخته نشد.
+- تغییرات این نوبت هنوز روی هاست نصب نشده‌اند. migration `2026_10_09_000004_add_app_accounts_and_article_views.php` باید پس از backup اجرا شود تا OTP برای ورود عمومی، فهرست کاربران و شمار بازدید در محیط زنده فعال شوند. نسخهٔ اندروید قدیمی همچنان از پاسخ API پیش‌فرض بدون `include_views` استفاده می‌کند.
+
 ## بازبینی ویرایشگر و قرارداد اپ قدیمی — ۲۰۲۶/۱۰/۰۷
 
 - ۱۴ آزمون Node پنل موفق: CKEditor واقعی، حفظ دقیق HTML و جدول هنگام تغییر عنوان، پاک‌سازی خروجی، ذخیره از حالت Source و حفظ متن هنگام انقضای ورود.

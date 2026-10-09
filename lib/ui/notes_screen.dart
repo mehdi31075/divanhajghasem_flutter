@@ -131,7 +131,10 @@ class NoteCard extends StatelessWidget {
           children: [
             Text(
               controller.categoryName(note.categoryId),
-              style: const TextStyle(fontSize: 16, color: NotebookColors.gold),
+              style: const TextStyle(
+                fontSize: NotebookTypeScale.small,
+                color: NotebookColors.gold,
+              ),
             ),
             Row(
               children: [
@@ -155,12 +158,18 @@ class NoteCard extends StatelessWidget {
                   : note.body,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 18, color: NotebookColors.muted),
+              style: const TextStyle(
+                fontSize: NotebookTypeScale.small,
+                color: NotebookColors.muted,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               '${relativeDate(note.updatedAt)} · پیش‌نویس روی گوشی',
-              style: const TextStyle(fontSize: 16, color: NotebookColors.teal),
+              style: const TextStyle(
+                fontSize: NotebookTypeScale.small,
+                color: NotebookColors.teal,
+              ),
             ),
           ],
         ),

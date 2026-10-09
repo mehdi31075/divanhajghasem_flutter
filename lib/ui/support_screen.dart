@@ -1,9 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../application/notebook_controller.dart';
+import 'account_login_dialog.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -17,105 +15,55 @@ class SupportScreen extends StatefulWidget {
 
 class _SupportScreenState extends State<SupportScreen> {
   final _message = TextEditingController();
-  final _receiptInput = TextEditingController();
-  final List<Map<String, dynamic>> _tickets = [];
+  final List<Map<String, dynamic>> _messages = [];
   bool _sending = false;
   bool _loading = false;
+  bool _composerOpen = true;
   String? _error;
   String? _notice;
 
   @override
   void initState() {
     super.initState();
-    _refresh();
+    _composerOpen = !widget.controller.isSignedIn;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.controller.isSignedIn) _refresh();
+    });
   }
 
   @override
   void dispose() {
     _message.dispose();
-    _receiptInput.dispose();
     super.dispose();
   }
 
-  Future<List<String>> _receipts() async {
-    final saved = await widget.controller.database.preference(
-      'support_receipts',
-    );
-    if (saved == null) return [];
-    try {
-      return (jsonDecode(saved) as List)
-          .whereType<String>()
-          .where((value) => RegExp(r'^[a-f0-9]{32}$').hasMatch(value))
-          .toSet()
-          .toList();
-    } catch (_) {
-      return [];
-    }
-  }
-
-  Future<void> _saveReceipt(String receipt) async {
-    final current = await _receipts();
-    current.remove(receipt);
-    current.insert(0, receipt);
-    await widget.controller.database.setPreference(
-      'support_receipts',
-      jsonEncode(current.take(30).toList()),
-    );
-  }
-
-  Future<void> _refresh({bool force = false}) async {
-    if (_loading && !force) return;
+  Future<void> _refresh() async {
+    final token = widget.controller.accountToken;
+    if (token == null || _loading) return;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final receipts = await _receipts();
-      final tickets = <Map<String, dynamic>>[];
-      for (final receipt in receipts) {
-        try {
-          tickets.add({
-            ...await widget.controller.library.api.supportTicket(receipt),
-            'receipt': receipt,
-          });
-        } catch (_) {
-          // Keep other tickets visible if one is temporarily unavailable.
-        }
-      }
-      if (!mounted) return;
-      setState(() {
-        _tickets
-          ..clear()
-          ..addAll(tickets);
-      });
-    } catch (_) {
+      final messages = await widget.controller.library.api.supportMessages(
+        token,
+      );
       if (mounted) {
-        setState(
-          () => _error = 'پیام‌ها دریافت نشدند. اتصال اینترنت را بررسی کنید.',
-        );
+        setState(() {
+          _messages
+            ..clear()
+            ..addAll(messages);
+        });
+      }
+    } catch (error) {
+      if (!mounted) return;
+      final message = _messageOf(error);
+      setState(() => _error = message);
+      if (message.contains('وارد حساب شوید') || message.contains('منقضی')) {
+        await widget.controller.logoutAccount();
       }
     } finally {
       if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _addReceipt() async {
-    final code = _receiptInput.text.trim().toLowerCase();
-    if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(code)) {
-      setState(() => _error = 'کد پیگیری ۳۲ نویسه‌ای را کامل وارد کنید.');
-      return;
-    }
-    try {
-      await widget.controller.library.api.supportTicket(code);
-      await _saveReceipt(code);
-      _receiptInput.clear();
-      await _refresh(force: true);
-    } catch (error) {
-      if (mounted) {
-        setState(
-          () => _error = error.toString().replaceFirst('Exception: ', ''),
-        );
-      }
     }
   }
 
@@ -125,101 +73,92 @@ class _SupportScreenState extends State<SupportScreen> {
       setState(() => _error = 'متن پیام را بنویسید.');
       return;
     }
+    if (!widget.controller.isSignedIn) {
+      final loggedIn = await showDialog<bool>(
+        context: context,
+        builder: (_) => AccountLoginDialog(controller: widget.controller),
+      );
+      if (loggedIn != true || !mounted) return;
+    }
+    final token = widget.controller.accountToken;
+    if (token == null) return;
     setState(() {
       _sending = true;
       _error = null;
       _notice = null;
     });
     try {
-      final receipt = await widget.controller.library.api.submitSupportMessage(
-        text,
-      );
-      await _saveReceipt(receipt);
+      await widget.controller.library.api.submitSupportMessage(token, text);
       if (!mounted) return;
       _message.clear();
-      setState(
-        () => _notice =
-            'پیام شما ارسال شد. کد پیگیری را برای مراجعه از دستگاه دیگر نگه دارید.',
-      );
-      await _refresh(force: true);
+      setState(() {
+        _notice = 'درخواست ثبت شد؛ پاسخ مدیر را در همین گفت‌وگو می‌بینید.';
+        _composerOpen = false;
+      });
+      await _refresh();
     } catch (error) {
-      if (mounted) {
-        setState(
-          () => _error = error.toString().replaceFirst('Exception: ', ''),
-        );
+      if (!mounted) return;
+      final message = _messageOf(error);
+      setState(() => _error = message);
+      if (message.contains('وارد حساب شوید') || message.contains('منقضی')) {
+        await widget.controller.logoutAccount();
       }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
+  String _messageOf(Object error) =>
+      error.toString().replaceFirst('Exception: ', '');
+
   @override
-  Widget build(BuildContext context) => PageBody(
-    key: const Key('support-page'),
-    children: [
-      Text('پشتیبانی', style: Theme.of(context).textTheme.headlineSmall),
-      const Text(
-        'انتقاد، پیشنهاد یا پرسش خود را فقط به‌صورت متنی بنویسید. پاسخ مدیر در همین بخش نمایش داده می‌شود.',
-      ),
-      Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                key: const Key('support-message'),
-                controller: _message,
-                minLines: 5,
-                maxLines: 9,
-                maxLength: 3000,
-                textDirection: TextDirection.rtl,
-                textAlign: TextAlign.right,
-                decoration: const InputDecoration(
-                  labelText: 'متن پیام',
-                  hintText: 'پیام خود را بنویسید…',
-                  alignLabelWithHint: true,
-                ),
-              ),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                key: const Key('support-send'),
-                onPressed: _sending ? null : _send,
-                icon: _sending
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send_outlined),
-                label: Text(_sending ? 'در حال ارسال…' : 'ارسال پیام'),
-              ),
-              if (_notice != null) ...[
-                const SizedBox(height: 12),
-                SoftMessage(
-                  title: 'پیام ارسال شد',
-                  message: _notice!,
-                  icon: Icons.check_circle_outline,
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                SoftMessage(
-                  title: 'ارسال انجام نشد',
-                  message: _error!,
-                  icon: Icons.error_outline,
-                  isError: true,
-                ),
-              ],
-            ],
-          ),
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: widget.controller,
+    builder: (context, _) => PageBody(
+      key: const Key('support-page'),
+      children: [
+        Text('پشتیبانی', style: Theme.of(context).textTheme.headlineSmall),
+        const Text(
+          'انتقاد، پیشنهاد یا پرسش خود را متنی بنویسید. پاسخ مدیر در همین بخش نمایش داده می‌شود.',
         ),
-      ),
+        if (widget.controller.isSignedIn) _accountCard(),
+        if (widget.controller.isSignedIn) _ticketsHeading(),
+        if (_composerOpen) _composerCard(),
+        if (_notice != null)
+          SoftMessage(
+            title: 'پشتیبانی',
+            message: _notice!,
+            icon: Icons.check_circle_outline,
+          ),
+        if (_error != null)
+          SoftMessage(
+            title: 'انجام نشد',
+            message: _error!,
+            icon: Icons.error_outline,
+            isError: true,
+          ),
+        if (widget.controller.isSignedIn) ...[
+          if (_messages.isEmpty && !_loading)
+            const SoftMessage(
+              title: 'درخواستی ندارید',
+              message:
+                  'درخواست‌های ثبت‌شده و پاسخ پشتیبانی اینجا نمایش داده می‌شوند.',
+              icon: Icons.mark_chat_unread_outlined,
+            ),
+          for (final message in _messages) _ticketCard(message),
+        ],
+      ],
+    ),
+  );
+
+  Widget _ticketsHeading() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
       Row(
         children: [
           Expanded(
             child: Text(
-              'پیام‌های من',
+              'درخواست‌های من',
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
@@ -236,119 +175,226 @@ class _SupportScreenState extends State<SupportScreen> {
           ),
         ],
       ),
-      Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'اگر کد پیگیری را در دستگاه دیگری دارید، اینجا وارد کنید.',
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                key: const Key('support-receipt'),
-                controller: _receiptInput,
-                maxLength: 32,
-                textDirection: TextDirection.ltr,
-                decoration: const InputDecoration(
-                  labelText: 'کد پیگیری',
-                  counterText: '',
-                ),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: _addReceipt,
-                child: const Text('افزودن پیام با کد پیگیری'),
-              ),
-            ],
+      if (!_composerOpen)
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: FilledButton.tonalIcon(
+            key: const Key('support-new-ticket'),
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 64)),
+            onPressed: () => setState(() {
+              _message.clear();
+              _composerOpen = true;
+            }),
+            icon: const Icon(Icons.add),
+            label: const Text('درخواست جدید'),
           ),
         ),
-      ),
-      if (_tickets.isEmpty && !_loading)
-        const SoftMessage(
-          title: 'پیامی ندارید',
-          message: 'پس از ارسال پیام، وضعیت پاسخ آن اینجا نمایش داده می‌شود.',
-          icon: Icons.mark_chat_unread_outlined,
-        ),
-      for (final ticket in _tickets) _ticketCard(ticket),
     ],
   );
 
-  Widget _ticketCard(Map<String, dynamic> ticket) {
-    final receipt = ticket['receipt'] as String? ?? '';
-    final reply = ticket['reply'] as String?;
+  Widget _accountCard() => Card(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.person_outline, color: NotebookColors.teal),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'حساب: ${widget.controller.accountUser?['name'] ?? widget.controller.accountUser?['mobile'] ?? 'وارد شده'}',
+            ),
+          ),
+          IconButton(
+            tooltip: 'خروج از حساب',
+            onPressed: _sending
+                ? null
+                : () => widget.controller.logoutAccount(),
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _composerCard() => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'درخواست تازه',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              if (widget.controller.isSignedIn)
+                IconButton(
+                  tooltip: 'بستن فرم',
+                  onPressed: _sending
+                      ? null
+                      : () => setState(() => _composerOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+            ],
+          ),
+          TextField(
+            key: const Key('support-message'),
+            controller: _message,
+            minLines: 4,
+            maxLines: 8,
+            maxLength: 3000,
+            textDirection: TextDirection.rtl,
+            textAlign: TextAlign.right,
+            decoration: const InputDecoration(
+              labelText: 'متن پیام',
+              hintText: 'انتقاد، پیشنهاد یا پرسش خود را بنویسید…',
+              alignLabelWithHint: true,
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            key: const Key('support-send'),
+            onPressed: _sending ? null : _send,
+            icon: _sending
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.send_outlined),
+            label: Text(_sending ? 'در حال ثبت…' : 'ثبت درخواست'),
+          ),
+          if (!widget.controller.isSignedIn)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('برای ثبت درخواست، ورود با شمارهٔ موبایل لازم است.'),
+            ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _ticketCard(Map<String, dynamic> message) {
+    final id = message['id']?.toString() ?? '';
+    final reply = message['reply']?.toString();
+    final hasReply = reply?.trim().isNotEmpty == true;
+    final status = hasReply ? 'پاسخ داده شده' : 'در انتظار پاسخ';
+    final createdAt = message['created_at'];
+    final repliedAt = message['replied_at'];
+    final date = _formatDate(createdAt);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        key: Key('support-ticket-$id'),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+        title: Text('درخواست پشتیبانی ${id.isEmpty ? '' : '· $id'}'),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text('$status${date.isEmpty ? '' : ' · $date'}'),
+        ),
+        children: [
+          _chatBubble(
+            label: 'شما',
+            text: message['message']?.toString() ?? '',
+            date: date,
+            alignment: AlignmentDirectional.centerEnd,
+            background: NotebookColors.soft,
+          ),
+          const SizedBox(height: 12),
+          if (hasReply)
+            _chatBubble(
+              label: 'پشتیبانی دیوان',
+              text: reply!,
+              date: _formatDate(repliedAt),
+              alignment: AlignmentDirectional.centerStart,
+              background: Colors.white,
+            )
+          else
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: NotebookColors.ivory,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: NotebookColors.border),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.schedule_outlined,
+                      size: 20,
+                      color: NotebookColors.muted,
+                    ),
+                    SizedBox(width: 8),
+                    Text('در انتظار پاسخ پشتیبانی'),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chatBubble({
+    required String label,
+    required String text,
+    required String date,
+    required AlignmentGeometry alignment,
+    required Color background,
+  }) => Align(
+    alignment: alignment,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: NotebookColors.border),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'پیام شما',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: NotebookColors.teal,
-              ),
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(color: NotebookColors.teal),
             ),
             const SizedBox(height: 6),
-            SelectableText(ticket['message']?.toString() ?? ''),
-            const SizedBox(height: 14),
-            Text(
-              reply == null || reply.isEmpty
-                  ? 'در انتظار پاسخ مدیر'
-                  : 'پاسخ مدیر',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: NotebookColors.teal,
+            SelectableText(text),
+            if (date.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                date,
+                textAlign: TextAlign.end,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: NotebookColors.muted),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              reply?.isNotEmpty == true
-                  ? reply!
-                  : 'پس از ثبت پاسخ، اینجا نمایش داده می‌شود.',
-            ),
-            const Divider(height: 26),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'کد پیگیری',
-                    style: TextStyle(fontSize: 14, color: NotebookColors.muted),
-                  ),
-                ),
-                Flexible(
-                  child: SelectableText(
-                    receipt,
-                    textDirection: TextDirection.ltr,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'کپی کد پیگیری',
-                  onPressed: receipt.isEmpty
-                      ? null
-                      : () async {
-                          await Clipboard.setData(ClipboardData(text: receipt));
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('کد پیگیری کپی شد.'),
-                              ),
-                            );
-                          }
-                        },
-                  icon: const Icon(Icons.copy_outlined),
-                ),
-              ],
-            ),
+            ],
           ],
         ),
       ),
-    );
+    ),
+  );
+
+  String _formatDate(Object? raw) {
+    final value = raw?.toString();
+    if (value == null) return '';
+    final date = DateTime.tryParse(value)?.toLocal();
+    if (date == null) return '';
+    final localizations = MaterialLocalizations.of(context);
+    final time = localizations.formatTimeOfDay(TimeOfDay.fromDateTime(date));
+    return '${localizations.formatMediumDate(date)} · $time';
   }
 }

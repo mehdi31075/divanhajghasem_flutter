@@ -209,7 +209,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 Text(
                   widget.controller.categoryName(_note.categoryId),
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: NotebookTypeScale.small,
                     color: NotebookColors.gold,
                   ),
                 ),
@@ -253,11 +253,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   children: [
                     const Text('اندازه متن'),
                     OutlinedButton(
-                      onPressed: () => _size(-2),
+                      onPressed: () => _size(-1),
                       child: const Text('کوچک‌تر'),
                     ),
                     FilledButton.tonal(
-                      onPressed: () => _size(2),
+                      onPressed: () => _size(1),
                       child: const Text('بزرگ‌تر'),
                     ),
                   ],
@@ -283,7 +283,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   );
   Future<void> _size(double change) async {
     try {
-      await widget.controller.setTextSize(widget.controller.textSize + change);
+      await widget.controller.adjustTextSize(change.toInt());
     } catch (_) {
       if (mounted) {
         showFailure(context);

@@ -41,7 +41,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 version.snapshot?.bodyIsHtml == true
                     ? plainHtml(version.body)
                     : version.body,
-                style: const TextStyle(fontSize: 22, height: 1.8),
+                style: const TextStyle(
+                  fontSize: NotebookTypeScale.body,
+                  height: 1.8,
+                ),
               ),
             ],
           ),

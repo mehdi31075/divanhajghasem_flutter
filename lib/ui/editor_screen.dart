@@ -276,7 +276,7 @@ class _EditorScreenState extends State<EditorScreen>
             onChanged: (_) => _edited(),
             decoration: const InputDecoration(labelText: 'عنوان یادداشت'),
             textInputAction: TextInputAction.next,
-            style: const TextStyle(fontSize: 22),
+            style: const TextStyle(fontSize: NotebookTypeScale.body),
           ),
           TextField(
             key: const Key('post-subtitle'),
@@ -366,7 +366,10 @@ class _EditorScreenState extends State<EditorScreen>
           ),
           const Text(
             'نوشته تا تأیید سرور به‌صورت پیش‌نویس روی دستگاه نگه داشته می‌شود.',
-            style: TextStyle(fontSize: 16, color: NotebookColors.muted),
+            style: TextStyle(
+              fontSize: NotebookTypeScale.small,
+              color: NotebookColors.muted,
+            ),
           ),
         ],
       ),

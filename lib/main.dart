@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'application/notebook_controller.dart';
 import 'data/notebook_database.dart';
+import 'data/token_vault.dart';
 import 'ui/home_shell.dart';
 import 'ui/theme.dart';
 
@@ -27,11 +29,18 @@ class _NotebookBootstrapState extends State<NotebookBootstrap> {
 
   Future<NotebookController> _open() async {
     final database = await NotebookDatabase.open();
-    final controller = NotebookController(database);
+    final controller = NotebookController(
+      database,
+      // Browser storage keeps the web session across reloads. Native sessions
+      // continue to use the platform secure store.
+      tokenVault: kIsWeb ? BrowserTokenVault() : SecureTokenVault(),
+    );
     try {
       await controller.load();
       return controller;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Notebook startup failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
       await database.close();
       rethrow;
     }
@@ -60,6 +69,10 @@ class _NotebookBootstrapState extends State<NotebookBootstrap> {
                         const Text(
                           'دفتر باز نشد. نوشته‌های ذخیره‌شده پاک نشده‌اند.',
                         ),
+                        if (kDebugMode) ...[
+                          const SizedBox(height: 12),
+                          SelectableText('${snapshot.error}'),
+                        ],
                         const SizedBox(height: 24),
                         FilledButton(
                           onPressed: () => setState(() {

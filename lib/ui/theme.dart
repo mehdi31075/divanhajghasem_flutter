@@ -10,6 +10,13 @@ abstract final class NotebookColors {
   static const gold = Color(0xFF927027);
 }
 
+abstract final class NotebookTypeScale {
+  static const small = 16.0;
+  static const body = 20.0;
+  static const title = 24.0;
+  static const display = 28.0;
+}
+
 ThemeData notebookTheme() => ThemeData(
   useMaterial3: true,
   fontFamily: 'Vazirmatn',
@@ -20,31 +27,87 @@ ThemeData notebookTheme() => ThemeData(
     surface: Colors.white,
   ),
   textTheme: const TextTheme(
+    displayLarge: TextStyle(
+      fontSize: NotebookTypeScale.display,
+      fontWeight: FontWeight.bold,
+      height: 1.6,
+      color: NotebookColors.ink,
+    ),
+    displayMedium: TextStyle(
+      fontSize: NotebookTypeScale.display,
+      fontWeight: FontWeight.bold,
+      height: 1.6,
+      color: NotebookColors.ink,
+    ),
+    displaySmall: TextStyle(
+      fontSize: NotebookTypeScale.title,
+      fontWeight: FontWeight.bold,
+      height: 1.6,
+      color: NotebookColors.ink,
+    ),
+    headlineLarge: TextStyle(
+      fontSize: NotebookTypeScale.display,
+      fontWeight: FontWeight.bold,
+      height: 1.6,
+      color: NotebookColors.ink,
+    ),
+    headlineMedium: TextStyle(
+      fontSize: NotebookTypeScale.title,
+      fontWeight: FontWeight.bold,
+      height: 1.6,
+      color: NotebookColors.ink,
+    ),
     headlineSmall: TextStyle(
-      fontSize: 28,
+      fontSize: NotebookTypeScale.display,
       fontWeight: FontWeight.bold,
       height: 1.6,
       color: NotebookColors.ink,
     ),
     titleLarge: TextStyle(
-      fontSize: 24,
+      fontSize: NotebookTypeScale.title,
       fontWeight: FontWeight.bold,
       height: 1.6,
       color: NotebookColors.ink,
     ),
     titleMedium: TextStyle(
-      fontSize: 22,
+      fontSize: NotebookTypeScale.body,
       fontWeight: FontWeight.w500,
       height: 1.6,
       color: NotebookColors.ink,
     ),
-    bodyLarge: TextStyle(fontSize: 20, height: 1.7, color: NotebookColors.ink),
+    titleSmall: TextStyle(
+      fontSize: NotebookTypeScale.body,
+      fontWeight: FontWeight.w500,
+      height: 1.6,
+      color: NotebookColors.ink,
+    ),
+    bodyLarge: TextStyle(
+      fontSize: NotebookTypeScale.body,
+      height: 1.7,
+      color: NotebookColors.ink,
+    ),
     bodyMedium: TextStyle(
-      fontSize: 18,
+      fontSize: NotebookTypeScale.small,
       height: 1.7,
       color: NotebookColors.muted,
     ),
-    labelLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+    bodySmall: TextStyle(
+      fontSize: NotebookTypeScale.small,
+      height: 1.7,
+      color: NotebookColors.muted,
+    ),
+    labelLarge: TextStyle(
+      fontSize: NotebookTypeScale.body,
+      fontWeight: FontWeight.w500,
+    ),
+    labelMedium: TextStyle(
+      fontSize: NotebookTypeScale.small,
+      fontWeight: FontWeight.w500,
+    ),
+    labelSmall: TextStyle(
+      fontSize: NotebookTypeScale.small,
+      fontWeight: FontWeight.w500,
+    ),
   ),
   appBarTheme: const AppBarTheme(
     backgroundColor: NotebookColors.ivory,
@@ -53,7 +116,7 @@ ThemeData notebookTheme() => ThemeData(
     centerTitle: false,
     titleTextStyle: TextStyle(
       fontFamily: 'Vazirmatn',
-      fontSize: 26,
+      fontSize: NotebookTypeScale.title,
       fontWeight: FontWeight.bold,
       color: NotebookColors.ink,
     ),
@@ -73,7 +136,7 @@ ThemeData notebookTheme() => ThemeData(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       textStyle: const TextStyle(
         fontFamily: 'Vazirmatn',
-        fontSize: 22,
+        fontSize: NotebookTypeScale.body,
         fontWeight: FontWeight.w500,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

@@ -41,6 +41,8 @@ void main() {
       }),
     );
     addTearDown(api.close);
+    expect(api.endpoint.path, '/index.php/api.php');
+    expect(api.endpoint.resolve('pages.php').path, '/index.php/pages.php');
     final categories = await api.categories();
     final articles = await api.articles('61');
     final detail = await api.article('117');
@@ -63,8 +65,8 @@ void main() {
     );
     expect(paths.map((p) => p.query), [
       '',
-      'cat_id=61&include_dates=1',
-      'nid=117&include_dates=1',
+      'cat_id=61&include_dates=1&include_views=1',
+      'nid=117&include_dates=1&include_views=1',
     ]);
     expect(articles.single.subtitle, 'عنوان فرعی');
     expect(detail.htmlBody, '<p>سلام<br>دنیا</p>');
@@ -116,47 +118,150 @@ void main() {
   });
 
   test(
-    'support sends plain text over HTTPS and can retrieve an admin response',
+    'support requires a phone OTP session and lists replies by account',
     () async {
       final requests = <http.Request>[];
-      const receipt = '0123456789abcdef0123456789abcdef';
+      final token = List.filled(64, 'a').join();
       final api = LegacyApi(
-        endpoint: Uri.parse('http://divanhajghasem.ir/api.php'),
+        endpoint: Uri.parse('http://divanhajghasem.ir/index.php/api.php'),
         client: MockClient((request) async {
           requests.add(request);
-          if (request.url.queryParameters['action'] == 'support_create') {
-            return http.Response.bytes(
-              utf8.encode(jsonEncode({'ok': true, 'receipt': receipt})),
-              200,
-              headers: {'content-type': 'application/json'},
-            );
-          }
-          return http.Response.bytes(
-            utf8.encode(
-              jsonEncode({
-                'ok': true,
-                'ticket': {
+          final action = request.url.queryParameters['action'];
+          final response = switch (action) {
+            'support_start' => {
+              'ok': true,
+              'challenge_id': List.filled(64, 'b').join(),
+              'test_otp': '012345',
+              'mode': 'register',
+            },
+            'support_verify' => {
+              'ok': true,
+              'access_token': token,
+              'user': {'name': 'کاربر آزمایشی', 'mobile': '+989123456789'},
+            },
+            'support_send' => {'ok': true},
+            'support_mine' => {
+              'ok': true,
+              'messages': [
+                {
                   'message': 'انتقاد فارسی',
                   'reply': 'پاسخ مدیر',
                   'created_at': '2026-10-09T12:00:00Z',
                   'replied_at': '2026-10-09T13:00:00Z',
                 },
-              }),
-            ),
+              ],
+            },
+            'support_logout' => {'ok': true},
+            _ => {'ok': false, 'message': 'unknown action'},
+          };
+          return http.Response.bytes(
+            utf8.encode(jsonEncode(response)),
             200,
             headers: {'content-type': 'application/json'},
           );
         }),
       );
       addTearDown(api.close);
-      expect(await api.submitSupportMessage('انتقاد فارسی'), receipt);
-      expect((await api.supportTicket(receipt))['reply'], 'پاسخ مدیر');
-      expect(requests.map((request) => request.url.scheme), ['https', 'https']);
+      final challenge = await api.startSupportOtp(
+        'کاربر آزمایشی',
+        '۰۹۱۲۳۴۵۶۷۸۹',
+      );
+      expect(challenge['test_otp'], '012345');
+      expect(challenge['mode'], 'register');
+      final session = await api.verifySupportOtp(
+        challenge['challenge_id'] as String,
+        challenge['test_otp'] as String,
+      );
+      expect(session['access_token'], token);
+      await api.submitSupportMessage(token, 'انتقاد فارسی');
+      expect((await api.supportMessages(token)).single['reply'], 'پاسخ مدیر');
+      await api.logoutSupport(token);
+      expect(requests.map((request) => request.url.scheme).toSet(), {'https'});
+      expect(requests.map((request) => request.url.path).toSet(), {
+        '/index.php/mobile-api.php',
+      });
       expect(requests.map((request) => request.url.queryParameters['action']), [
-        'support_create',
-        'support_check',
+        'support_start',
+        'support_verify',
+        'support_send',
+        'support_mine',
+        'support_logout',
       ]);
-      expect(requests.first.bodyFields, {'message': 'انتقاد فارسی'});
+      expect(requests.first.bodyFields, {
+        'name': 'کاربر آزمایشی',
+        'mobile': '۰۹۱۲۳۴۵۶۷۸۹',
+      });
+      expect(requests[2].headers['authorization'], 'Bearer $token');
+      expect(requests[3].headers['authorization'], 'Bearer $token');
+      expect(requests[2].bodyFields, {'message': 'انتقاد فارسی'});
+      expect(requests[0].bodyFields.containsKey('receipt'), isFalse);
+    },
+  );
+
+  test(
+    'app account onboarding asks for name only after OTP and records public views',
+    () async {
+      final requests = <http.Request>[];
+      final token = List.filled(64, 'c').join();
+      var verification = 0;
+      final api = LegacyApi(
+        client: MockClient((request) async {
+          requests.add(request);
+          final action = request.url.queryParameters['action'];
+          final result = switch (action) {
+            'user_start' => {
+              'ok': true,
+              'challenge_id': List.filled(64, 'd').join(),
+              'test_otp': '123456',
+              'mode': 'register',
+            },
+            'user_verify' when verification++ == 0 => {
+              'ok': true,
+              'needs_name': true,
+              'mode': 'register',
+            },
+            'user_verify' => {
+              'ok': true,
+              'access_token': token,
+              'user': {'id': '7', 'name': 'نام', 'mobile': '+989123456789'},
+            },
+            'user_me' => {
+              'ok': true,
+              'user': {'id': '7', 'name': 'نام', 'mobile': '+989123456789'},
+            },
+            'user_logout' => {'ok': true},
+            'article_view' => {'ok': true, 'nid': '117', 'views': 9},
+            _ => {'ok': false},
+          };
+          return http.Response.bytes(utf8.encode(jsonEncode(result)), 200);
+        }),
+      );
+      addTearDown(api.close);
+
+      final start = await api.startAccountOtp('09123456789');
+      final challenge = start['challenge_id'] as String;
+      final needsName = await api.verifyAccountOtp(challenge, '123456');
+      expect(needsName['needs_name'], true);
+      final login = await api.verifyAccountOtp(
+        challenge,
+        '123456',
+        name: 'نام',
+      );
+      expect(login['access_token'], token);
+      expect((await api.accountUser(token))['name'], 'نام');
+      expect(await api.incrementArticleView('117'), 9);
+      await api.logoutAccount(token);
+      expect(requests.map((request) => request.url.queryParameters['action']), [
+        'user_start',
+        'user_verify',
+        'user_verify',
+        'user_me',
+        'article_view',
+        'user_logout',
+      ]);
+      expect(requests.first.bodyFields, {'mobile': '09123456789'});
+      expect(requests[2].bodyFields['name'], 'نام');
+      expect(requests[4].bodyFields, {'nid': '117'});
     },
   );
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../application/notebook_controller.dart';
+import 'account_login_dialog.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -11,11 +12,60 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  Future<void> _openAccount() async {
+    if (widget.controller.isSignedIn) {
+      final logout = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('حساب کاربری'),
+          content: Text(
+            widget.controller.accountUser?['name']?.toString() ??
+                'شمارهٔ تأییدشده: ${widget.controller.accountUser?['mobile'] ?? ''}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('بستن'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('خروج از حساب'),
+            ),
+          ],
+        ),
+      );
+      if (logout == true) await widget.controller.logoutAccount();
+      return;
+    }
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => AccountLoginDialog(controller: widget.controller),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.controller,
     builder: (context, _) => PageBody(
       children: [
+        Card(
+          child: ListTile(
+            key: const Key('app-account'),
+            leading: const Icon(Icons.account_circle_outlined),
+            title: Text(
+              widget.controller.isSignedIn
+                  ? 'حساب کاربری'
+                  : 'ورود یا ساخت حساب',
+            ),
+            subtitle: Text(
+              widget.controller.isSignedIn
+                  ? '${widget.controller.accountUser?['name'] ?? widget.controller.accountUser?['mobile'] ?? 'وارد شده'}'
+                  : 'با شمارهٔ موبایل وارد شوید تا حساب شما در اپ فعال شود.',
+            ),
+            trailing: const Icon(Icons.chevron_left),
+            onTap: _openAccount,
+          ),
+        ),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -64,7 +114,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text(
                 'دیوان · نسخهٔ ۰.۱.۰',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: NotebookColors.muted),
+                style: TextStyle(
+                  fontSize: NotebookTypeScale.small,
+                  color: NotebookColors.muted,
+                ),
               ),
             ),
           ),

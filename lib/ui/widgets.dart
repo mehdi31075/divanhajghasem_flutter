@@ -52,7 +52,7 @@ class SoftMessage extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: NotebookTypeScale.body,
                     fontWeight: FontWeight.w500,
                     color: isError ? Colors.red.shade800 : NotebookColors.teal,
                   ),
@@ -60,7 +60,7 @@ class SoftMessage extends StatelessWidget {
                 Text(
                   message,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: NotebookTypeScale.small,
                     height: 1.6,
                     color: NotebookColors.muted,
                   ),
@@ -92,10 +92,16 @@ class ActionCard extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       minTileHeight: 72,
       leading: Icon(icon, color: NotebookColors.teal, size: 28),
-      title: Text(title, style: const TextStyle(fontSize: 20)),
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: NotebookTypeScale.body),
+      ),
       subtitle: subtitle == null
           ? null
-          : Text(subtitle!, style: const TextStyle(fontSize: 16)),
+          : Text(
+              subtitle!,
+              style: const TextStyle(fontSize: NotebookTypeScale.small),
+            ),
       trailing: onTap == null ? null : const Icon(Icons.chevron_right),
       onTap: onTap,
     ),

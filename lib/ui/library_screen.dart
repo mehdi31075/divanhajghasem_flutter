@@ -106,7 +106,7 @@ class _CategoryCard extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: NotebookTypeScale.body,
                             height: 1.5,
                             fontWeight: FontWeight.w600,
                             color: NotebookColors.ink,
@@ -121,7 +121,7 @@ class _CategoryCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: NotebookTypeScale.small,
                                   height: 1.5,
                                   color: NotebookColors.muted,
                                 ),
@@ -179,7 +179,10 @@ class LibraryArticlesScreen extends StatelessWidget {
     emptyMessage: 'این دسته هنوز مطلبی ندارد.',
     itemBuilder: (context, article) => ActionCard(
       title: plainHtml(article.title),
-      subtitle: article.subtitle.isEmpty ? null : plainHtml(article.subtitle),
+      subtitle: [
+        if (article.subtitle.isNotEmpty) plainHtml(article.subtitle),
+        'بازدید: ${article.viewCount}',
+      ].join(' · '),
       icon: Icons.menu_book_outlined,
       onTap: () => Navigator.push<void>(
         context,

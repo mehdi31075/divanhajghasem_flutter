@@ -1,5 +1,6 @@
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/notebook_database.dart';
 import '../domain/note.dart';
@@ -8,14 +9,21 @@ import '../data/legacy_api.dart';
 import '../data/library_repository.dart';
 import '../data/post_api.dart';
 import '../data/post_service.dart';
+import '../data/token_vault.dart';
 
 class NotebookController extends ChangeNotifier {
-  NotebookController(this.database, {LegacyApi? api, PostApi? postApi}) {
+  NotebookController(
+    this.database, {
+    LegacyApi? api,
+    PostApi? postApi,
+    TokenVault? tokenVault,
+  }) : tokenVault = tokenVault ?? MemoryTokenVault() {
     library = LibraryRepository(database, api ?? LegacyApi());
     posts = PostService(library, postApi ?? PostApi(library.api.endpoint));
     posts.api.addListener(notifyListeners);
   }
   final NotebookDatabase database;
+  final TokenVault tokenVault;
   late final LibraryRepository library;
   late final PostService posts;
 
@@ -45,11 +53,68 @@ class NotebookController extends ChangeNotifier {
       categories = [];
     }
     lastNoteId = await database.preference('last_note');
-    textSize =
-        (double.tryParse(await database.preference('font_size') ?? '') ?? 24)
-            .clamp(20, 32)
-            .toDouble();
+    textSize = _snapReadingTextSize(
+      double.tryParse(await database.preference('font_size') ?? '') ?? 24,
+    );
     pendingCount = await database.pendingCount();
+    accountToken = await tokenVault.read();
+    if (accountToken != null) unawaited(refreshAccount());
+    notifyListeners();
+  }
+
+  String? accountToken;
+  Map<String, dynamic>? accountUser;
+  bool get isSignedIn => accountToken != null;
+
+  Future<Map<String, dynamic>> startAccountOtp(String mobile) =>
+      library.api.startAccountOtp(mobile);
+
+  Future<Map<String, dynamic>> verifyAccountOtp(
+    String challengeId,
+    String otp, {
+    String? name,
+  }) async {
+    final result = await library.api.verifyAccountOtp(
+      challengeId,
+      otp,
+      name: name,
+    );
+    final token = result['access_token'];
+    if (token is String && RegExp(r'^[a-f0-9]{64}$').hasMatch(token)) {
+      await tokenVault.write(token);
+      accountToken = token;
+      accountUser = result['user'] is Map<String, dynamic>
+          ? result['user'] as Map<String, dynamic>
+          : null;
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<void> refreshAccount() async {
+    final token = accountToken;
+    if (token == null) return;
+    try {
+      accountUser = await library.api.accountUser(token);
+      notifyListeners();
+    } catch (_) {
+      // Keep the secure token on transient network failures; the API will
+      // reject an expired token when the user next performs an account action.
+    }
+  }
+
+  Future<void> logoutAccount() async {
+    final token = accountToken;
+    if (token != null) {
+      try {
+        await library.api.logoutAccount(token);
+      } catch (_) {
+        // Clear the device session even when offline.
+      }
+    }
+    await tokenVault.delete();
+    accountToken = null;
+    accountUser = null;
     notifyListeners();
   }
 
@@ -166,9 +231,28 @@ class NotebookController extends ChangeNotifier {
   }
 
   Future<void> setTextSize(double size) async {
-    final next = size.clamp(20.0, 32.0).toDouble();
+    final next = _snapReadingTextSize(size);
     await database.setPreference('font_size', next.toString());
     textSize = next;
     notifyListeners();
+  }
+
+  Future<void> adjustTextSize(int direction) async {
+    if (direction == 0) return;
+    const sizes = [20.0, 24.0, 28.0];
+    final currentIndex = sizes.indexOf(_snapReadingTextSize(textSize));
+    final nextIndex = (currentIndex + direction.sign).clamp(
+      0,
+      sizes.length - 1,
+    );
+    await setTextSize(sizes[nextIndex]);
+  }
+
+  double _snapReadingTextSize(double size) {
+    const sizes = [20.0, 24.0, 28.0];
+    return sizes.reduce(
+      (best, candidate) =>
+          (candidate - size).abs() < (best - size).abs() ? candidate : best,
+    );
   }
 }

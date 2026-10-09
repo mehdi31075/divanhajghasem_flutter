@@ -56,7 +56,7 @@ class LibraryRepository extends ChangeNotifier {
 
   Future<void> _store(
     String resource,
-    List<Map<String, Object>> data, {
+    List<Map<String, dynamic>> data, {
     List<LibraryCategory>? categories,
     int? articleEpoch,
   }) async {
@@ -132,6 +132,20 @@ class LibraryRepository extends ChangeNotifier {
         );
         return epoch == _articleEpoch ? data : await cachedArticles(id) ?? data;
       });
+
+  Future<int> recordArticleView(LibraryArticle article) async {
+    final count = await api.incrementArticleView(article.id);
+    final rows = await _cached('category:${article.categoryId}') ?? [];
+    final updated = rows.map((row) {
+      if (row['nid']?.toString() != article.id) return row;
+      return <String, dynamic>{...row, 'view_count': count};
+    }).toList();
+    if (rows.isNotEmpty) {
+      await _store('category:${article.categoryId}', updated);
+      notifyListeners();
+    }
+    return count;
+  }
 
   Future<void> commitPost({
     required String articleId,

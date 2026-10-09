@@ -49,6 +49,7 @@ class LibraryArticle {
     this.subtitle = '',
     this.createdAt,
     this.updatedAt,
+    this.viewCount = 0,
   });
   final String id;
   final String categoryId;
@@ -58,6 +59,7 @@ class LibraryArticle {
   final String htmlBody;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final int viewCount;
   String get searchableText => plainHtml('$title\n$subtitle\n$htmlBody');
 
   factory LibraryArticle.fromJson(Map<String, dynamic> row) => LibraryArticle(
@@ -68,6 +70,7 @@ class LibraryArticle {
     htmlBody: _string(row, 'news_description', required: true),
     createdAt: DateTime.tryParse(_string(row, 'created_at')),
     updatedAt: DateTime.tryParse(_string(row, 'updated_at')),
+    viewCount: int.tryParse(_string(row, 'view_count')) ?? 0,
   );
 
   Map<String, Object> toJson() => {
@@ -78,5 +81,17 @@ class LibraryArticle {
     'news_description': htmlBody,
     if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
     if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+    'view_count': viewCount,
   };
+
+  LibraryArticle copyWith({int? viewCount}) => LibraryArticle(
+    id: id,
+    categoryId: categoryId,
+    title: title,
+    htmlBody: htmlBody,
+    subtitle: subtitle,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+    viewCount: viewCount ?? this.viewCount,
+  );
 }

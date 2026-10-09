@@ -37,7 +37,10 @@ void main() {
       var records = pages();
       final api = LegacyApi(
         client: MockClient((request) async {
-          expect(request.url.toString(), 'http://divanhajghasem.ir/pages.php');
+          expect(
+            request.url.toString(),
+            'http://divanhajghasem.ir/index.php/pages.php',
+          );
           expect(request.headers.containsKey('authorization'), false);
           return response(records);
         }),

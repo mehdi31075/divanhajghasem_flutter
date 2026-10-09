@@ -76,6 +76,7 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
   final _scroll = ScrollController();
   Timer? _timer;
   bool _ready = false;
+  late int _viewCount;
   late final String _html;
   String get _positionKey =>
       'library-scroll:${widget.controller.library.api.endpoint}:${widget.article.id}';
@@ -83,6 +84,15 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
   @override
   void initState() {
     super.initState();
+    _viewCount = widget.article.viewCount;
+    unawaited(
+      widget.controller.library
+          .recordArticleView(widget.article)
+          .then((count) {
+            if (mounted) setState(() => _viewCount = count);
+          })
+          .catchError((Object _) {}),
+    );
     _html = readableHtml(
       widget.article.htmlBody,
       widget.controller.library.api.endpoint,
@@ -138,7 +148,7 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
 
   Future<void> _size(double delta) async {
     try {
-      await widget.controller.setTextSize(widget.controller.textSize + delta);
+      await widget.controller.adjustTextSize(delta.toInt());
     } catch (_) {
       if (mounted) showFailure(context);
     }
@@ -169,6 +179,11 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
               const SizedBox(height: 16),
               Text('تاریخ ایجاد: ${_articleDate(widget.article.createdAt)}'),
               Text('آخرین ویرایش: ${_articleDate(widget.article.updatedAt)}'),
+              const SizedBox(height: 6),
+              Text(
+                'بازدید: $_viewCount',
+                style: const TextStyle(fontSize: NotebookTypeScale.small),
+              ),
               const SizedBox(height: 24),
               SelectionArea(
                 child: HtmlWidget(
@@ -177,10 +192,12 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
                   factoryBuilder: () => _DivanWidgetFactory(),
                   customWidgetBuilder: (element) {
                     if (element.localName != 'video') return null;
-                    final src = element.attributes['src'] ??
+                    final src =
+                        element.attributes['src'] ??
                         element.querySelector('source')?.attributes['src'];
                     final uri = src == null ? null : Uri.tryParse(src);
-                    if (uri == null || !['http', 'https'].contains(uri.scheme)) {
+                    if (uri == null ||
+                        !['http', 'https'].contains(uri.scheme)) {
                       return null;
                     }
                     return _InlineVideoPlayer(key: ValueKey(src), url: uri);
@@ -218,7 +235,7 @@ class _LibraryReaderScreenState extends State<LibraryReaderScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: widget.controller.textSize >= 32
+                    onPressed: widget.controller.textSize >= 28
                         ? null
                         : () => _size(2),
                     child: const Text('بزرگ‌تر'),
@@ -250,11 +267,14 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
   void initState() {
     super.initState();
     _controller = VideoPlayerController.networkUrl(widget.url);
-    _controller.initialize().then((_) {
-      if (mounted) setState(() {});
-    }).catchError((Object _) {
-      if (mounted) setState(() {});
-    });
+    _controller
+        .initialize()
+        .then((_) {
+          if (mounted) setState(() {});
+        })
+        .catchError((Object _) {
+          if (mounted) setState(() {});
+        });
   }
 
   @override
